@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>P-2 attendance story</title>
+<style>
+  html,body{margin:0;padding:0;background:#e1d6cd;min-height:100%}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  #page{min-height:100dvh;background:#e1d6cd}
+  #wrap{position:relative}
+  .pill{position:absolute;z-index:50;min-height:44px;padding:0 18px;border-radius:999px;border:3px solid #10203f;background:#f2b632;color:#10203f;
+    font:600 15px/1 Fredoka,system-ui,sans-serif;box-shadow:3px 3px 0 #10203f;cursor:pointer}
+  #replay{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}
+  #foot{padding:18px 16px calc(28px + env(safe-area-inset-bottom));text-align:center;font:600 16px/1.3 system-ui,sans-serif}
+  #foot a{color:#10203f}
+  #overlay{position:fixed;inset:0;z-index:10000;background:#10182b}
+  #story{position:absolute;inset:0}
+  #loading{position:absolute;inset:0;z-index:28;display:grid;place-items:center;background:#10182b;color:#fff;font:600 28px/1.2 Fredoka,system-ui,sans-serif}
+  #loading i{display:block;width:56px;height:56px;margin:0 auto 18px;border-radius:50%;border:6px solid rgba(255,255,255,.25);border-top-color:#f2b632;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #skip{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;z-index:30;min-height:44px;min-width:72px;padding:0 18px;border-radius:999px;
+    border:2px solid rgba(255,255,255,.85);background:rgba(16,24,43,.72);color:#fff;font:600 15px/1 system-ui,sans-serif;cursor:pointer;transition:opacity .25s}
+  #scrim{position:absolute;inset:0;z-index:25;background:rgba(16,24,43,.38);display:grid;place-items:center;cursor:pointer}
+  #tap{min-height:84px;min-width:260px;padding:0 44px;border-radius:999px;border:5px solid #10203f;background:#f2b632;color:#10203f;
+    font:700 34px/1 Fredoka,system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:14px;animation:bob 1.6s ease-in-out infinite}
+  @keyframes bob{0%,100%{box-shadow:6px 6px 0 #10203f,0 0 0 0 rgba(242,182,50,.65)}50%{box-shadow:6px 6px 0 #10203f,0 0 0 16px rgba(242,182,50,0)}}
+  @media (prefers-reduced-motion:reduce){#tap{animation:none}}
+  #back{position:absolute;left:12px;bottom:max(16px,env(safe-area-inset-bottom));z-index:30;color:#fff;font:600 15px/1 system-ui,sans-serif;text-decoration:underline;padding:12px 4px}
+  #snd{position:absolute;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:30;width:48px;height:48px;border-radius:999px;padding:0;
+    border:2px solid rgba(255,255,255,.85);background:rgba(16,24,43,.72);color:#fff;display:grid;place-items:center;cursor:pointer}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="page" data-p2-page></div>
+  <button type="button" id="replay" class="pill" data-p2-replay hidden>Replay story</button>
+</div>
+<div id="foot" hidden><a href="./">Back to the 4 links</a></div>
+
+<div id="overlay" role="dialog" aria-label="Your weekly attendance story" data-p2-overlay hidden>
+  <div id="story" data-p2-story></div>
+  <div id="loading"><div style="text-align:center"><i></i>Opening the storybook&hellip;</div></div>
+  <button type="button" id="skip" data-p2-skip>Skip</button>
+  <div id="scrim" data-p2-tap-scrim hidden>
+    <button type="button" id="tap" data-p2-tap>
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M7 3.5 26 15 7 26.5z" fill="#10203f"/></svg>
+      Tap to play
+    </button>
+    <a id="back" href="./">Back to the 4 links</a>
+  </div>
+  <button type="button" id="snd" data-p2-sound-toggle hidden></button>
+</div>
+
+<script>
+(function () {
+"use strict";
+// Plain JS port of P2Story.tsx (attendance app). Same flow: loading -> story (Tap to play) -> page (P2Page) with Replay.
+
+// ---- which child ----
+var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100"];
+var kid = new URLSearchParams(location.search).get("kid");
+if (KIDS.indexOf(kid) < 0) { location.replace("./"); return; }
+
+// everything lives next to this page, so the site works under any sub-path
+var BASE = new URL("p2-story/", location.href).pathname;
+var READY_MS = 8000, STALL_MS = 8000;
+var FONT = BASE + "Fredoka-normal.woff2";
+var WALL = BASE + "final-layers/wall-tall.jpg";
+var AUDIO = BASE + "audio/";
+var SOUND_KEY = "p2story:sound";
+var SCRIPTS = ["gsap.min.js", "motion-igor.js", "p2-form.js", "p2-data.js", "p2-page.js", "p2-title.js", "p2-walk.js", "p2-arrival.js",
+  "p2-class.js", "p2-sorter.js", "p2-claw.js", "p2-results.js", "p2-party.js", "p2-family.js", "p2-final.js", "swoosh-wipe.js", "p2-sound.js", "p2-story.js"];
+
+var $ = function (id) { return document.getElementById(id); };
+var els = { page: $("page"), replay: $("replay"), foot: $("foot"), overlay: $("overlay"), story: $("story"), loading: $("loading"),
+  skip: $("skip"), scrim: $("scrim"), tap: $("tap"), snd: $("snd") };
+
+function stageFor(vw, vh) {
+  var aspect = vw / Math.max(1, vh);
+  var sw = aspect < 0.7 ? 1080 : Math.round((1920 * aspect) / 2) * 2;
+  sw = Math.max(1080, Math.min(3414, sw));
+  return { sw: sw, ps: Math.min(vw / sw, vh / 1920) };
+}
+
+var pics = function (dir, files) { return files.map(function (f) { return BASE + dir + "-layers/" + f; }); };
+var wideBg = function (f) { return BASE + "wide/" + f; };
+var CLAW_TOYS = []; for (var i = 0; i < 12; i++) CLAW_TOYS.push("toy-" + i + ".webp");
+function scenesFor(perfect, wide, girl) {
+  var k = girl ? "girl" : "boy";
+  var kp = function (dir, files) { return files.map(function (f) { return BASE + k + "/" + dir + "-layers/" + f; }); };
+  var kw = function (f) { return BASE + k + "/wide/" + f; };
+  return [
+    { start: 0, files: wide ? [wideBg("title.jpg")] : pics("title", ["title.jpg"]) },
+    { start: 4.5, files: [].concat(wide ? [wideBg("walk-bg.jpg")] : pics("walk", ["bg.jpg"]), kp("walk", ["body.webp", "legs-a.webp", "legs-b.webp"])) },
+    { start: 10.5, files: [].concat(wide ? [wideBg("arrival-bg.jpg")] : pics("arrival", ["bg.jpg"]), pics("arrival", ["group-a.webp", "group-b.webp"]), kp("arrival", ["pair-a.webp", "pair-s.webp"])) },
+    { start: 18.5, files: [].concat(wide ? [wideBg("classroom-bg.jpg")] : pics("classroom", ["bg.jpg"]), kp("classroom", ["girl-a.webp", "girl-blink.webp", "girl-w1.webp", "girl-w2.webp"])) },
+    { start: 24.5, files: girl ? [].concat(wide ? [wideBg("claw-bg.jpg")] : pics("claw", ["bg.jpg"]), pics("claw", CLAW_TOYS)) : wide ? [wideBg("sorter-bg.jpg")] : pics("sorter", ["bg.jpg"]) },
+    { start: 38.5, files: perfect ? (wide ? [kw("party.jpg"), kw("party-apart.jpg")] : kp("party", ["party.jpg", "party-apart.jpg"])) : (wide ? [wideBg("wall.jpg")] : pics("results", ["wall.jpg"])) },
+    { start: 44.5, files: wide ? [kw("family.jpg")] : kp("family", ["family.jpg"]) },
+    { start: 50.5, files: [WALL] }
+  ];
+}
+
+// ---- loading ----
+var scriptsPromise = null;
+function loadScripts() {
+  if (scriptsPromise) return scriptsPromise;
+  window.MOTION_IGOR_BASE = BASE;
+  scriptsPromise = Promise.all(SCRIPTS.map(function (name) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = BASE + name; s.async = false;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { reject(new Error("script failed: " + name)); };
+      document.head.appendChild(s);
+    });
+  })).then(function () {
+    var w = window;
+    if (!w.MotionIgor || !w.P2Page || !w.P2Data) throw new Error("scripts incomplete");
+    if (!document.getElementById("p2story-font")) {
+      var st = document.createElement("style");
+      st.id = "p2story-font";
+      st.textContent = "@font-face{font-family:Fredoka;src:url(" + FONT + ") format('woff2');font-weight:300 700;font-display:block}";
+      document.head.appendChild(st);
+    }
+  });
+  scriptsPromise.catch(function () { scriptsPromise = null; });
+  return scriptsPromise;
+}
+var threePromise = null;
+function loadThree() {
+  if (window.THREE) return Promise.resolve(true);
+  if (!threePromise) {
+    threePromise = new Promise(function (resolve) {
+      var s = document.createElement("script");
+      s.src = BASE + "three.min.js";
+      s.onload = function () { resolve(!!window.THREE); };
+      s.onerror = function () { resolve(false); };
+      document.head.appendChild(s);
+    });
+    threePromise.then(function (ok) { if (!ok) threePromise = null; });
+  }
+  return threePromise;
+}
+function primeFont(response) {
+  if (document.getElementById("p2pg-style")) return;
+  var tmp = document.createElement("div");
+  try { window.P2Page.mount(tmp, response, { font: FONT, wall: "data:,", entrance: false }).destroy(); } catch (e) { /* mount reports its own errors */ }
+}
+var picCache = {};
+function loadPic(url) {
+  if (!picCache[url]) picCache[url] = new Promise(function (resolve) {
+    var img = new Image();
+    img.onload = function () { resolve(true); };
+    img.onerror = function () { resolve(false); };
+    img.src = url;
+  });
+  return picCache[url];
+}
+function loadAll(files) { return Promise.all(files.map(loadPic)).then(function (r) { return r.every(Boolean); }); }
+
+// ---- settings ----
+function prefersReducedMotion() { try { return !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
+function lookFor(response) {
+  var g = String((response && response.student && response.student.gender) || "").trim().toUpperCase();
+  return { look: g === "F" ? "girl" : "boy" };
+}
+function readMuted() { try { return window.localStorage.getItem(SOUND_KEY) === "off"; } catch (e) { return false; } }
+function saveMuted(m) { try { window.localStorage.setItem(SOUND_KEY, m ? "off" : "on"); } catch (e) { /* blocked storage */ } }
+
+// ---- state ----
+var response = null;
+var phase = "loading";            // loading | story | page
+var run = 0;
+var fromStory = false;
+var started = false;
+var inst = null;
+var sound = null;
+var muted = readMuted();
+var teardown = null;              // leave the current phase's work
+var pageHandle = null;
+
+function getSound() {
+  if (!sound && window.P2Sound) { try { sound = window.P2Sound.create({ base: AUDIO, muted: muted }); } catch (e) { sound = null; } }
+  return sound;
+}
+function drawSound() {
+  var b = els.snd;
+  b.setAttribute("aria-label", muted ? "Sound is off, turn sound on" : "Sound is on, turn sound off");
+  b.setAttribute("aria-pressed", String(!muted));
+  b.innerHTML = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4 10h4l6-5v16l-6-5H4z" fill="#fff"/>' + (muted ? '<path d="M18 10l6 6M24 10l-6 6"/>' : '<path d="M18 9c2 2.5 2 5.5 0 8M21 6.5c3.5 4 3.5 9 0 13"/>') + "</svg>";
+}
+
+function setPhase(p) {
+  if (teardown) { var t = teardown; teardown = null; try { t(); } catch (e) { /* ignore */ } }
+  phase = p;
+  window.__p2test.phase = p;
+  var overlay = p === "loading" || p === "story";
+  els.overlay.hidden = !overlay;
+  els.loading.hidden = p !== "loading";
+  els.scrim.hidden = !(p === "story" && !started);
+  els.snd.hidden = p !== "story";
+  els.replay.hidden = p !== "page";
+  els.foot.hidden = p !== "page";
+  if (p === "loading") startLoading();
+  else if (p === "story") startStory();
+  else startPage();
+}
+
+// 1. loading: scripts + first scene's pictures, 8 s at most
+function startLoading() {
+  var dead = false;
+  var timer = setTimeout(function () { if (!dead) { dead = true; setPhase("page"); } }, READY_MS);
+  teardown = function () { dead = true; clearTimeout(timer); };
+  var firstPics = loadAll(scenesFor(true, stageFor(innerWidth, innerHeight).sw > 1080, lookFor(response).look === "girl")[0].files);
+  loadScripts().then(function () {
+    if (dead) return null;
+    primeFont(response);
+    return firstPics;
+  }, function () { if (!dead) { dead = true; clearTimeout(timer); setPhase("page"); } return null; }).then(function (first) {
+    if (dead || first === null) return;
+    clearTimeout(timer); dead = true;
+    if (!first) { setPhase("page"); return; }
+    setPhase("story");
+  });
+}
+
+// 2. story
+function startStory() {
+  var w = window, host = els.story;
+  var over = false, ticker = 0, resizeTimer = 0, epoch = 0;
+  var cur = { sw: 0, ps: 0 };
+  var scenes = [], ready = [], failed = [];
+  var snd = getSound();
+  try { snd && snd.preload(); } catch (e) { /* optional */ }
+  var finish = function () { if (!over) { over = true; fromStory = true; setPhase("page"); } };
+  function mountStory() {
+    var st = stageFor(host.clientWidth || innerWidth, host.clientHeight || innerHeight);
+    var t = inst ? inst.tl.time() : 0;
+    if (inst) { try { inst.destroy(); } catch (e) { /* gone */ } inst = null; }
+    var content = Object.assign(w.P2Data.toStory(response), { base: BASE, pxScale: st.ps, lazySorter: true }, lookFor(response));
+    scenes = scenesFor(!!content.perfect, st.sw > 1080, content.look === "girl");
+    host.style.background = "#10182b";
+    inst = w.MotionIgor.mount(host, "p2-story", { theme: "ais", fit: "contain", size: [st.sw, 1920], content: content });
+    inst.pause();
+    inst.seek(t);
+    w.__p2test.inst = inst;
+    w.__p2test.scenes = scenes;
+    cur = st;
+    var my = ++epoch;
+    ready = scenes.map(function (_, i) { return i === 0; });
+    failed = scenes.map(function () { return false; });
+    var threeReady = loadThree();
+    scenes.reduce(function (chain, s, i) {
+      if (i === 0) return chain;
+      return chain.then(function () {
+        return Promise.all([loadAll(s.files), i === 4 ? threeReady : Promise.resolve(true)]).then(function (r) { return r[0] && r[1]; }).then(function (ok) {
+          if (my === epoch) { ready[i] = ok; failed[i] = !ok; }
+        });
+      });
+    }, Promise.resolve());
+    inst.tl.eventCallback("onComplete", finish);
+    if (started) inst.play();
+    if (snd) {
+      var cues = [];
+      try { cues = w.MotionIgor.registry["p2-story"].cues(content); } catch (e) { cues = []; }
+      snd.run({
+        time: function () { return inst ? inst.tl.time() : 0; },
+        playing: function () { return !!inst && !inst.tl.paused() && inst.tl.timeScale() > 0; },
+        rate: function () { return inst ? inst.tl.timeScale() : 1; },
+        cues: cues
+      });
+    }
+  }
+  try {
+    mountStory();
+    var stalledSince = 0, heldByWait = false;
+    ticker = setInterval(function () {
+      if (over || !inst) return;
+      var t = inst.tl.time();
+      if (scenes.length) {
+        var lastBeat = t >= scenes[scenes.length - 1].start;
+        els.skip.style.opacity = lastBeat ? "0" : "1";
+        els.skip.style.pointerEvents = lastBeat ? "none" : "auto";
+      }
+      if (!started) return;
+      var waitingFor = -1;
+      for (var i = 1; i < scenes.length; i++) if (t >= scenes[i].start - 0.6 && !ready[i]) { waitingFor = i; break; }
+      if (waitingFor >= 0) {
+        if (failed[waitingFor]) { finish(); return; }
+        if (!stalledSince) stalledSince = Date.now();
+        if (Date.now() - stalledSince > STALL_MS) { finish(); return; }
+        if (!inst.tl.paused()) { inst.pause(); heldByWait = true; }
+      } else {
+        stalledSince = 0;
+        if (heldByWait) { heldByWait = false; if (inst.tl.paused() && inst.tl.time() < inst.duration - 0.001) inst.play(); }
+      }
+    }, 100);
+  } catch (e) { console.error("P2 story failed to start", e); finish(); }
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (over || !inst) return;
+      var st = stageFor(host.clientWidth || innerWidth, host.clientHeight || innerHeight);
+      if (st.sw === cur.sw && Math.abs(st.ps - cur.ps) <= cur.ps * 0.02) return;
+      try { mountStory(); } catch (e) { console.error("P2 story re-fit failed", e); finish(); }
+    }, 150);
+  }
+  addEventListener("resize", onResize);
+  addEventListener("orientationchange", onResize);
+  teardown = function () {
+    over = true;
+    clearInterval(ticker); clearTimeout(resizeTimer);
+    removeEventListener("resize", onResize); removeEventListener("orientationchange", onResize);
+    try { snd && snd.halt(150); } catch (e) { /* optional */ }
+    w.__p2test.inst = null;
+    try { inst && inst.destroy(); } catch (e) { /* gone */ }
+    inst = null;
+  };
+}
+
+// 3. page
+function startPage() {
+  var dead = false;
+  var afterStory = fromStory;
+  fromStory = false;
+  loadScripts().then(function () {
+    if (dead) return;
+    primeFont(response);
+    scrollTo(0, 0);
+    try {
+      pageHandle = window.P2Page.mount(els.page, response, { scroll: "window", font: FONT, wall: WALL, entrance: !afterStory });
+    } catch (e) { console.error("P2 page failed to mount", e); }
+  }, function (e) { console.error(e); });
+  teardown = function () {
+    dead = true;
+    try { pageHandle && pageHandle.destroy(); } catch (e) { /* gone */ }
+    pageHandle = null;
+    els.page.innerHTML = "";
+  };
+}
+
+// ---- controls ----
+function tapToPlay() {
+  if (started) return;
+  started = true;
+  els.scrim.hidden = true;
+  var s = getSound();
+  try { s && s.reset(); s && s.unlock(); } catch (e) { /* silent story */ }
+  try { inst && inst.play(); } catch (e) { /* ticker keeps it honest */ }
+}
+els.tap.addEventListener("click", function (e) { e.stopPropagation(); tapToPlay(); });
+els.scrim.addEventListener("click", tapToPlay);
+els.skip.addEventListener("click", function () { setPhase("page"); });
+els.replay.addEventListener("click", function () {
+  started = true;
+  var s = getSound();
+  try { s && s.reset(); s && s.unlock(); } catch (e) { /* optional */ }
+  run++;
+  scrollTo(0, 0);
+  setPhase("loading");
+});
+els.snd.addEventListener("click", function () {
+  muted = !muted;
+  saveMuted(muted);
+  drawSound();
+  var s = getSound();
+  try { s && s.setMuted(muted); if (!muted) s && s.unlock(); } catch (e) { /* optional */ }
+});
+addEventListener("pagehide", function () { try { sound && sound.destroy(); } catch (e) { /* ignore */ } });
+
+// ---- go ----
+window.__p2test = { phase: "loading", inst: null, scenes: [], kid: kid };
+drawSound();
+fetch("data/" + kid + ".json").then(function (r) { if (!r.ok) throw new Error("data " + r.status); return r.json(); }).then(function (json) {
+  response = json;
+  window.__p2test.response = json;
+  setPhase(prefersReducedMotion() ? "page" : "loading");
+}).catch(function (e) { console.error(e); document.body.innerHTML = '<p style="font:600 18px system-ui;padding:24px">Could not load this story. <a href="./">Back to the 4 links</a></p>'; });
+})();
+</script>
+</body>
+</html>
