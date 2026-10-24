@@ -88,7 +88,26 @@ MotionIgor.define({
         ' Q' + (rx + 18) + ' ' + (h + 20) + ' ' + (rx + 40) + ' ' + (h - 14) + 'Z" fill="#fff" stroke="' + INK + '" stroke-width="7" stroke-linejoin="round"/>' +
         '<rect x="' + (rx - 40) + '" y="' + (h - 30) + '" width="78" height="22" fill="#fff"/>';
     }
-    var mum = bubble(c.mum, [50, 456, 580, 250], [480, 850], BLUE);
+    // Mum's line follows what was missed last week (Igor, 24 Oct): Dad always keeps his line; one kind missed = that kind's line,
+    // two or more kinds = the "together" line; a 100% week keeps the proud line. Long lines get a smaller font so they fit the bubble.
+    var MUM_LINES = {
+      absent: { text: "Every school day counts. Let's aim for all of them!", hi: ["counts.", "all"] },
+      late: { text: "Let's beat the school bell together next week!", hi: ["school", "bell"] },
+      early: { text: "Next week, let's stay right to the end!", hi: ["end!"] },
+      mixed: { text: "We can do even better next week, together!", hi: ["even", "better"] }
+    };
+    function mumLine() {
+      var w = c.lastWeek || {}, kinds = [];
+      if ((w.absent || 0) > 0) kinds.push("absent");
+      if ((w.lateToSchool || 0) > 0) kinds.push("late");
+      if ((w.earlyLeave || 0) > 0) kinds.push("early");
+      if (c.perfect || !kinds.length) return c.mum;
+      return kinds.length > 1 ? MUM_LINES.mixed : MUM_LINES[kinds[0]];
+    }
+    var mumSays = mumLine();
+    var mum = bubble(mumSays, [50, 456, 580, 250], [480, 850], BLUE);
+    var mumLen = String(mumSays.text).length;
+    if (mumLen > 38) mum.body.style.fontSize = (mumLen > 44 ? 48 : 54) + "px";
     var dad = bubble(c.dad, [652, 500, 380, 196], [815, 748], GREEN);    // beside Mum's bubble; the tip stops just above Dad's headdress
     drawTail(mum); drawTail(dad);
     // the white tail must sit under the body's text but over its border: put the body above the tail
