@@ -30,10 +30,10 @@ var SOUNDS = {                       // sound name -> file in audio/ (gain = ext
   clank: { file: "clank.m4a", gain: 1 },
   "switch": { file: "switch.m4a", gain: 1 },
   tap: { file: "tap.m4a", gain: 1 },
-  "claw-move": { file: "claw-move.m4a", gain: 0.5 },      // the claw machine scene (girls)
-  "claw-grab": { file: "claw-grab.m4a", gain: 0.5 },
-  "toy-drop": { file: "toy-drop.m4a", gain: 0.5 },
-  "toy-slip": { file: "toy-slip.m4a", gain: 0.5 },
+  "claw-move": { file: "claw-move.m4a", gain: 0.25 },      // the claw machine scene (girls)
+  "claw-grab": { file: "claw-grab.m4a", gain: 0.25 },
+  "toy-drop": { file: "toy-drop.m4a", gain: 0.25 },
+  "toy-slip": { file: "toy-slip.m4a", gain: 0.25 },
   music: { file: "music.m4a", gain: 1 }
 };
 var CUE_SOUND = {                    // story cue name -> sound name; cue names not listed here make no sound (round-start, wrong-hole, round-clear)
