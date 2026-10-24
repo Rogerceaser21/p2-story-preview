@@ -1,5 +1,5 @@
 /* P-2 arrival beat · p2-arrival  (option A: 3D living storybook)
- * Maryam leads her mum by the hand up to the school gate while the teacher and friends wave; the name caption pops in.
+ * Noor leads her mum by the hand up to the school gate while the teacher and friends wave; the name caption pops in.
  * The 3D art moves only as WHOLE figures (never cut at the joints). Every layer comes from image edits of the approved
  * arrival picture; each second pose is the first pose with only the hands (wave) or legs (step) replaced
  * (tools/poses.py), so faces never change between poses. Motion = camera drift with depth, a 2-pose step cycle,
@@ -21,7 +21,7 @@ MotionIgor.define({
     art: "arrival-layers/",
     badge: "Weekly report",
     episode: "Week 7",
-    child: { name: "Maryam", grade: "Grade 0", form: "PREP A" },
+    child: { name: "Noor", grade: "Grade 0", form: "PREP A" },
     chrome: true                       // false: the story draws the badge, week above its transitions
   },
   build: function (ctx) {
@@ -65,7 +65,7 @@ MotionIgor.define({
     var gA = img("group-a.webp", "left:0;top:0;width:1080px;height:1890px", group);
     var gB = img("group-b.webp", "left:0;top:0;width:1080px;height:1890px", group);
 
-    // Maryam (leading, gate side) and her mum, walking in from the left, nearer the camera
+    // Noor (leading, gate side) and her mum, walking in from the left, nearer the camera
     var PS = 0.95, PY = 1560 - 1530 * PS;
     var PX0 = -(762 * PS) - 20 - WD.ox, PX1 = 60 - 263 * PS;            // fully off screen left -> mum's back 60 px from the world edge
     var pair = el("div", "position:absolute;left:0;top:0;width:1080px;height:1935px;transform-origin:0 0", world);
@@ -122,7 +122,7 @@ MotionIgor.define({
     var WAVE0 = 0.9, WAVE1 = 6.8, WAVEP = 0.36;
     var CAP0 = 4.5;
     // camera keys [time, scale, tx, ty]: open close on the waving group, then one steady pull-back and pan left that meets
-    // Maryam and mum as they walk in. The right edge of the view stays on the world's right edge the whole way, so the
+    // Noor and mum as they walk in. The right edge of the view stays on the world's right edge the whole way, so the
     // teacher is always whole (his picture ends at his elbow, just past that edge). |tx| <= 540 (scale - 1) and ty within
     // [620 (1 - s), 1300 (s - 1)] keep every world edge off screen.
     var CAM = [[0, 1.3, -160, 0], [0.6, 1.3, -160, 0], [4.8, 1.04, -20, 10]];
@@ -155,7 +155,7 @@ MotionIgor.define({
       pS.style.visibility = stridePose ? "hidden" : "visible";
       pShadow.style.transform = "scale(" + (stridePose ? 1.06 : 1) + ",1)";
 
-      // welcome group: wave cycle (hands only), small breath, a little bounce when Maryam arrives
+      // welcome group: wave cycle (hands only), small breath, a little bounce when Noor arrives
       var waving = t > WAVE0 && t < WAVE1;
       var wpose = waving && (Math.floor((t - WAVE0) / (WAVEP / 2)) % 2 === 1);
       gB.style.visibility = wpose ? "visible" : "hidden";

@@ -6,7 +6,7 @@
  * on screen the whole time (each beat runs with chrome: false); the badge and week pill pop in when the title card ends
  * (the title has its own big week pill) and the week pill fades out on the final card. Beats: title 4.5 s, walk 6 s, gate 8 s,
  * classroom 6 s, shape sorter 14 s (three rounds of 4.6 s: came to school, on time, stayed all day), then the party (100% week) OR the results card (6 s), family 6 s, final card 4 s.
- * The walk to school (6 s: mum and Maryam from behind up the school path) plays between the title and the gate, so the gate and
+ * The walk to school (6 s: mum and Noor from behind up the school path) plays between the title and the gate, so the gate and
  * everything after it start 6 s later. The three-round sorter (14 s, was 7 s) makes the story 54.5 s in all.
  * Needs swoosh-wipe.js from the kit loaded alongside the beats.
  * content.look === "girl": the sorter beat is the claw machine (p2-claw, same 14 s, same three rounds, same data); anything else is the peg sorter (p2-sorter).
@@ -72,7 +72,7 @@ MotionIgor.define({
     pxScale: 0,                        // css px of the screen per stage px (set by the app for the last beat); 0 = the old phone size
     badge: "Weekly report",
     episode: "Week 7",
-    child: { name: "Maryam", grade: "Grade 0", form: "PREP A" },
+    child: { name: "Noor", grade: "Grade 0", form: "PREP A" },
     // the child's numbers: what P2Data.toStory(response) gives for the app's response (lastWeek / term / year are the
     // parent page's period totals plus the numbers it works out from them). Default = sample-100 (a 100% week).
     weekEnding: "2026-10-15",

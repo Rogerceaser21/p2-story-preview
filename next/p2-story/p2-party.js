@@ -19,7 +19,7 @@ MotionIgor.define({
   defaults: {
     art: "party-layers/",
     headline: ["100%", "this", "week!"],
-    child: { name: "Maryam", grade: "Grade 0", form: "PREP A" },
+    child: { name: "Noor", grade: "Grade 0", form: "PREP A" },
     score: "100%",
     perfect: true,                     // the story only mounts this beat when the week is perfect (P2Data.toStory().perfect)
     badge: "Weekly report",

@@ -1,5 +1,5 @@
 /* P-2 walk-to-school beat · p2-walk  (option A: 3D living storybook, scene 2 of the final plan)
- * Mum and Maryam, seen from behind, walk hand in hand up the school path towards the clock tower and the arched gate.
+ * Mum and Noor, seen from behind, walk hand in hand up the school path towards the clock tower and the arched gate.
  * Nobody is welcoming them: the empty school approach is a ChatGPT picture made from Igor's reference (flat storyboard),
  * remade in the approved 3D look; the pair is one whole-figure picture cut from green, with a second leg pose for the step
  * (pose B = pose A with only the legs from the edit, tools/walk.py; the body above the hems is one shared picture), so faces and clothes never change between the two.
@@ -22,7 +22,7 @@ MotionIgor.define({
     art: "walk-layers/",
     badge: "Weekly report",
     episode: "Week 7",
-    child: { name: "Maryam", grade: "Grade 0", form: "PREP A" },
+    child: { name: "Noor", grade: "Grade 0", form: "PREP A" },
     chrome: true                       // false: the story draws the badge, week above its transitions
   },
   build: function (ctx) {

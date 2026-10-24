@@ -20,7 +20,7 @@ MotionIgor.define({
   defaults: {
     art: "final-layers/",
     response: null,                    // the raw fetch-student-data response (P2Data.toStory(response).response)
-    child: { name: "Maryam", grade: "Grade 0", form: "PREP A" },
+    child: { name: "Noor", grade: "Grade 0", form: "PREP A" },
     dataAsOf: "2026-10-20",
     weekEnding: "2026-10-15",
     weekNumber: 7,

@@ -1,5 +1,5 @@
 /* P-2 family beat · p2-family  (option A: 3D living storybook)
- * At home in the evening: Maryam shows her report on the phone and her parents are proud. Mum's speech bubble pops
+ * At home in the evening: Noor shows her report on the phone and her parents are proud. Mum's speech bubble pops
  * first, then Dad's, word by word; the camera drifts slowly from Mum towards Dad as each one speaks; the phone screen
  * glows, the night stars in the window twinkle and a few hearts float up from the phone at the end.
  * The picture moves only as a whole (no cut-outs): every effect is drawn in code over it.

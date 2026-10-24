@@ -1,5 +1,5 @@
 /* P-2 classroom beat · p2-class  (option A: 3D living storybook)
- * Maryam at her desk, ready to learn: the camera eases in, she blinks and waves hello at the viewer, the wall clock ticks
+ * Noor at her desk, ready to learn: the camera eases in, she blinks and waves hello at the viewer, the wall clock ticks
  * from 7:55 to 8:00, "Ready to learn!" pops in and her name card drops onto the desk front.
  * Whole-figure layers only (tools/classroom.py): each extra pose is the first pose with only the waving arm or the eyes
  * replaced, so her face never changes between poses. The clock hands are drawn in code over a hand-less clock face.
@@ -24,7 +24,7 @@ MotionIgor.define({
     badge: "Weekly report",
     episode: "Week 7",
     headline: ["Ready", "to", "learn!"],
-    child: { name: "Maryam", grade: "Grade 0", form: "PREP A" },
+    child: { name: "Noor", grade: "Grade 0", form: "PREP A" },
     badgeIn: false,                    // false: badge already on screen (it popped in during the arrival beat)
     chrome: true                       // false: the story draws the badge, week above its transitions
   },
@@ -46,7 +46,7 @@ MotionIgor.define({
 
     // ---------------------------------------------------------------- layers
     ctx.stage.style.background = "#f3e6d6";
-    var OX = 560, OY = 900;                                   // the camera eases in towards Maryam's face
+    var OX = 560, OY = 900;                                   // the camera eases in towards Noor's face
     var world = el("div", "position:absolute;left:0;top:0;width:1080px;height:1920px;transform-origin:" + OX + "px " + OY + "px;filter:saturate(1.15)");
     var bg = img("@" + WD.src(c.art, "classroom-bg.jpg", "bg.jpg"), WD.bg(1935, -8) + ";transform-origin:" + (OX + WD.wideLeft) + "px " + OY + "px", world);
     // clock hands over the hand-less clock face (centre 544,522 in the picture; the wall is slightly soft-focus)
