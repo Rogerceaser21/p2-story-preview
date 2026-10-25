@@ -42,7 +42,7 @@ MotionIgor.define({
     box.style.cssText = "position:absolute;left:0;top:0;width:" + (ctx.W * ps) + "px;height:" + (1920 * ps) + "px;transform-origin:0 0;transform:scale(" + (1 / ps) + ")";
     st.appendChild(box);
     var input = c.response || c;                                    // no response: P2Data.toPage builds one from lastWeek / term / year
-    var page = P2Page.mount(box, input, { scroll: "self", driven: true, wall: c.art + "wall-tall.jpg", bannerWidth: c.pxScale > 0 ? window.innerWidth : 0 });   // in the app the page after the story is as wide as the screen: its banner choice must match (a portrait iPad plays the narrow portrait stage)
+    var page = P2Page.mount(box, input, { scroll: "self", driven: true, hold: !!c.holdPictures, wall: c.art + "wall-tall.jpg", bannerWidth: c.pxScale > 0 ? window.innerWidth : 0 });   // in the app the page after the story is as wide as the screen: its banner choice must match (a portrait iPad plays the narrow portrait stage)
     ctx.onDraw(function (t) { page.seek(t); });
     return { destroy: function () { page.destroy(); } };
   }

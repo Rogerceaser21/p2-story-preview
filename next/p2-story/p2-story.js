@@ -15,13 +15,15 @@
  */
 (function () {
 // beats in play order with their start second (b.at). 100% = the parent page's hasPerfectWeek: the class party; otherwise the results card. Exactly one of the two plays, so the story is the same length either way.
-function beatList(perfect, look) {
+function beatList(perfect, look, band) {
+  var g36 = band === "g36";                                           // Grade 3-6: the game scene is 18 s (three rounds of 6 s): jigsaw for girls, football for boys; everything after it starts 4 s later
   var list = [
     { id: "p2-title", dur: 4.5, art: "title-layers/" },
     { id: "p2-walk", dur: 6, art: "walk-layers/" },
     { id: "p2-arrival", dur: 8, art: "arrival-layers/" },
     { id: "p2-class", dur: 6, art: "classroom-layers/" },
-    look === "girl" ? { id: "p2-claw", dur: 14, art: "claw-layers/" } : { id: "p2-sorter", dur: 14, art: "sorter-layers/" },   // girls: the claw machine (p2-claw), everyone else: the peg sorter
+    g36 ? (look === "girl" ? { id: "p36-puzzle", dur: 18, art: "puzzle-layers/" } : { id: "p36-football", dur: 18, art: "football-layers/" })
+        : look === "girl" ? { id: "p2-claw", dur: 14, art: "claw-layers/" } : { id: "p2-sorter", dur: 14, art: "sorter-layers/" },   // P-2 girls: the claw machine (p2-claw), P-2 boys: the peg sorter
     perfect ? { id: "p2-party", dur: 6, art: "party-layers/" } : { id: "p2-results", dur: 6, art: "results-layers/" },
     { id: "p2-family", dur: 6, art: "family-layers/" },
     { id: "p2-final", dur: 4, art: "final-layers/" }
@@ -38,10 +40,10 @@ var SPEED = 3, WIPE = 1.4 / SPEED, COVER = 0.7 / SPEED;
 //   counter-tick  a counter card goes up: round 1 of the sorter at each good piece (drop-in), round 2 at each tag-late, round 3 at each tag-early,
 //                 SORTER_TICK_LAG s after the cue (the sorter does not declare counter cues; RD 4.6 s is its round length)
 // Nothing is returned for the final beat (the report is silent) or after it.
-var SORTER_RD = 4.6, SORTER_TICK_LAG = 0.06;
-function storyCues(content) {
-  var c = MotionIgor.util.deepMerge(MotionIgor.registry["p2-story"].defaults, content || {});
-  var beats = beatList(!!c.perfect, c.look), out = [], last = beats[beats.length - 1];
+var SORTER_RD = 4.6, SORTER_TICK_LAG = 0.06, G36_RD = 6;           // G36_RD: round length of the Grade 3-6 game beats (p36-puzzle, p36-football)
+function storyCues(content, band, id) {
+  var c = MotionIgor.util.deepMerge(MotionIgor.registry[id || "p2-story"].defaults, content || {});
+  var beats = beatList(!!c.perfect, c.look, band), out = [], last = beats[beats.length - 1];
   beats.slice(1).forEach(function (b) { out.push({ t: +(b.at - COVER).toFixed(3), name: "swoosh", beat: b.id }); });
   beats.forEach(function (b) {
     var def = MotionIgor.registry[b.id];
@@ -51,18 +53,23 @@ function storyCues(content) {
       if ((b.id === "p2-sorter" || b.id === "p2-claw") && (((q.name === "drop-in" || q.name === "toy-drop") && q.t < SORTER_RD) || q.name === "tag-late" || q.name === "tag-early")) {
         out.push({ t: +(b.at + q.t + SORTER_TICK_LAG).toFixed(3), name: "counter-tick", beat: b.id });
       }
+      // Grade 3-6: round 1 counts a day at school at each piece that goes in / goal; rounds 2 and 3 tick at each tag-late / tag-early
+      if ((b.id === "p36-puzzle" || b.id === "p36-football") && (((q.name === "piece-in" || q.name === "goal") && q.t < G36_RD) || q.name === "tag-late" || q.name === "tag-early")) {
+        out.push({ t: +(b.at + q.t + SORTER_TICK_LAG).toFixed(3), name: "counter-tick", beat: b.id });
+      }
     });
   });
   return out.filter(function (q) { return q.t < last.at; }).sort(function (a, b) { return a.t - b.t; });
 }
 
+function defineStory(id, band, duration, title) {
 MotionIgor.define({
-  id: "p2-story",
-  duration: 54.5,
+  id: id,
+  duration: duration,
   size: [1080, 1920],
   kind: "layout",
-  title: "P-2 report · story",
-  cues: storyCues,
+  title: title,
+  cues: function (content) { return storyCues(content, band, id); },
   style: "3D living storybook",
   engine: "dom",
   theme: "ais",
@@ -93,7 +100,7 @@ MotionIgor.define({
     var GOLD = "#f2b632", BLUE = "#2f6fe0", GREEN = "#2fa84f", INK = "#10203f";
     // 100% = the parent page's hasPerfectWeek (computed by P2Data.toStory): the class party; otherwise the results card. Exactly one of the two plays, so the story is the same length either way.
     var perfect = !!c.perfect;
-    var BEATS = beatList(perfect, c.look);                                    // 54.5 s in all
+    var BEATS = beatList(perfect, c.look, band);                              // 54.5 s in all (P-2), 58.5 s (Grade 3-6)
     function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
     function seg(t, a, b) { return clamp((t - a) / (b - a), 0, 1); }
     function outBack(x) { var k = 1.9; x = x - 1; return 1 + (k + 1) * x * x * x + k * x * x; }
@@ -105,14 +112,15 @@ MotionIgor.define({
 
     function nestBeat(h, b) {
       ctx.nest(h, b.id, { at: b.at, dur: b.dur, size: [SW, 1920], content: {
-        art: c.base + b.art, child: c.child, episode: c.episode, weekEnding: c.weekEnding, weekEndingText: c.weekEndingText, weekNumber: c.weekNumber, perfect: c.perfect,
-        lastWeek: c.lastWeek, term: c.term, year: c.year, response: c.response, dataAsOf: c.dataAsOf, pxScale: c.pxScale, look: c.look, chrome: false
+        // p36-football uses content.art as it is (no P2Kid inside): the story hands it the boy36 folder; p36-puzzle resolves girl36 itself with P2Kid.art, like the kid pictures of the other beats
+        art: c.base + (b.id === "p36-football" ? P2Kid.art({ look: c.look, band: band }, b.art) : b.art), child: c.child, episode: c.episode, weekEnding: c.weekEnding, weekEndingText: c.weekEndingText, weekNumber: c.weekNumber, perfect: c.perfect,
+        lastWeek: c.lastWeek, term: c.term, year: c.year, response: c.response, dataAsOf: c.dataAsOf, pxScale: c.pxScale, look: c.look, holdPictures: c.holdPictures, band: band, chrome: false
       } });
     }
     var lazy = null;                                                  // { h, b }: the beat that waits for three.js
     var hosts = BEATS.map(function (b) {
       var h = layer(1);
-      if (c.lazySorter && (b.id === "p2-sorter" || b.id === "p2-claw") && typeof THREE === "undefined") lazy = { h: h, b: b };
+      if (c.lazySorter && (b.id === "p2-sorter" || b.id === "p2-claw" || b.id === "p36-football") && typeof THREE === "undefined") lazy = { h: h, b: b };
       else nestBeat(h, b);
       return h;
     });
@@ -160,4 +168,7 @@ MotionIgor.define({
     return { destroy: function () { wipes.forEach(function (w) { if (w.inst.destroy) w.inst.destroy(); }); } };
   }
 });
+}
+defineStory("p2-story", "p2", 54.5, "P-2 report · story");
+defineStory("p36-story", "g36", 58.5, "Grade 3-6 report · story");
 })();

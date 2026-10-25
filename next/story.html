@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>P-2 attendance story</title>
+<title>Attendance story</title>
 <style>
   html,body{margin:0;padding:0;background:#e1d6cd;min-height:100%}
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-text-size-adjust:100%}
@@ -17,16 +17,26 @@
   #foot a{color:#10203f}
   #overlay{position:fixed;inset:0;z-index:10000;background:#10182b;touch-action:none;overscroll-behavior:none}
   #story{position:absolute;inset:0}
-  #loading{position:absolute;inset:0;z-index:28;display:grid;place-items:center;background:#10182b;color:#fff;font:600 28px/1.2 Fredoka,system-ui,sans-serif}
-  #loading i{display:block;width:56px;height:56px;margin:0 auto 18px;border-radius:50%;border:6px solid rgba(255,255,255,.25);border-top-color:#f2b632;animation:spin 1s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
+  /* storybook loader (same as StorybookLoader.tsx): cream page, three shapes bouncing in turn, no text */
+  #loading{position:absolute;inset:0;z-index:28;display:flex;align-items:center;justify-content:center;background:#f6f2ea}
+  .p2-loader-row{display:flex;align-items:flex-end;justify-content:center;gap:18px;height:60px}
+  .p2-loader-row>i{display:block;width:28px;height:28px;animation:p2-loader-bounce 1.2s ease-in-out infinite}
+  .p2-loader-row>i.c{background:#3a7bd5;border-radius:50%;animation-delay:0s}
+  .p2-loader-row>i.s{background:#2e9b57;border-radius:4px;animation-delay:.15s}
+  .p2-loader-row>i.t{width:0;height:0;background:none;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:28px solid #e3a514;animation-delay:.3s}
+  @keyframes p2-loader-bounce{0%,55%,100%{transform:translateY(0)}25%{transform:translateY(-26px)}}
+  @media (prefers-reduced-motion:reduce){.p2-loader-row>i{animation:none}}
+  #pageload{position:absolute;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#f6f2ea;min-height:100dvh}
+  #shapes{position:absolute;left:0;right:0;top:calc(50% - 150px);display:flex;justify-content:center}
   #skip{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;z-index:30;min-height:44px;min-width:72px;padding:0 18px;border-radius:999px;
     border:2px solid rgba(255,255,255,.85);background:rgba(16,24,43,.72);color:#fff;font:600 15px/1 system-ui,sans-serif;cursor:pointer;transition:opacity .25s}
   #scrim{position:absolute;inset:0;z-index:25;background:rgba(16,24,43,.38);display:grid;place-items:center;cursor:pointer}
+  #tap[data-wait]{animation:wait 1.1s ease-in-out infinite}
+  @keyframes wait{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.72;transform:scale(.97)}}
   #tap{min-height:84px;min-width:260px;padding:0 44px;border-radius:999px;border:5px solid #10203f;background:#f2b632;color:#10203f;
     font:700 34px/1 Fredoka,system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:14px;animation:bob 1.6s ease-in-out infinite}
   @keyframes bob{0%,100%{box-shadow:6px 6px 0 #10203f,0 0 0 0 rgba(242,182,50,.65)}50%{box-shadow:6px 6px 0 #10203f,0 0 0 16px rgba(242,182,50,0)}}
-  @media (prefers-reduced-motion:reduce){#tap{animation:none}}
+  @media (prefers-reduced-motion:reduce){#tap,#tap[data-wait]{animation:none}}
   #back{position:absolute;left:12px;bottom:max(16px,env(safe-area-inset-bottom));z-index:30;color:#fff;font:600 15px/1 system-ui,sans-serif;text-decoration:underline;padding:12px 4px}
   #snd{position:absolute;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:30;width:48px;height:48px;border-radius:999px;padding:0;
     border:2px solid rgba(255,255,255,.85);background:rgba(16,24,43,.72);color:#fff;display:grid;place-items:center;cursor:pointer}
@@ -36,20 +46,22 @@
 <body>
 <div id="wrap">
   <div id="page" data-p2-page></div>
+  <div id="pageload" hidden><div class="p2-loader-row" aria-hidden="true"><i class="c"></i><i class="s"></i><i class="t"></i></div></div>
   <button type="button" id="replay" class="pill" data-p2-replay hidden>Replay story</button>
 </div>
-<div id="foot" hidden><a href="./">Back to the 4 links</a></div>
+<div id="foot" hidden><a href="./">Back to the links</a></div>
 
-<div id="overlay" role="dialog" aria-label="Your weekly attendance story" data-p2-overlay hidden>
+<div id="overlay" role="dialog" aria-label="Your weekly attendance story" data-p2-overlay>
   <div id="story" data-p2-story></div>
-  <div id="loading"><div style="text-align:center"><i></i>Opening the storybook&hellip;</div></div>
+  <div id="loading" role="status" aria-label="Loading"><div class="p2-loader-row" aria-hidden="true"><i class="c"></i><i class="s"></i><i class="t"></i></div></div>
   <button type="button" id="skip" data-p2-skip>Skip</button>
   <div id="scrim" data-p2-tap-scrim hidden>
-    <button type="button" id="tap" data-p2-tap>
+    <div id="shapes"><div class="p2-loader-row" aria-hidden="true"><i class="c"></i><i class="s"></i><i class="t"></i></div></div>
+    <button type="button" id="tap" data-p2-tap hidden>
       <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M7 3.5 26 15 7 26.5z" fill="#10203f"/></svg>
       Tap to play
     </button>
-    <a id="back" href="./">Back to the 4 links</a>
+    <a id="back" href="./">Back to the links</a>
   </div>
   <button type="button" id="snd" data-p2-sound-toggle hidden></button>
 </div>
@@ -57,27 +69,38 @@
 <script>
 (function () {
 "use strict";
-// Plain JS port of P2Story.tsx (attendance app). Same flow: loading -> story (Tap to play) -> page (P2Page) with Replay.
+// Plain JS port of P2Story.tsx (attendance app, branch graph/p36-proof, tip 8df3db5). Same flow: loading (2-4 s) -> story (Tap to play) -> page (P2Page) with Replay.
+// Bands: "p2" = Pre Kindy to Grade 2 (54.5 s), "g36" = Grade 3 to 6 (58.5 s, an 18 s game scene: jigsaw for girls, football for boys).
+var T0 = performance.now();   // the loader is in the page's own HTML, so this is its first paint
 
 // ---- which child ----
-var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100"];
+var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100", "g36-girl-100", "g36-girl-not100", "g36-boy-100", "g36-boy-not100"];
 var kid = new URLSearchParams(location.search).get("kid");
 if (KIDS.indexOf(kid) < 0) { location.replace("./"); return; }
 
 // everything lives next to this page, so the site works under any sub-path
 var BASE = new URL("p2-story/", location.href).pathname;
-var READY_MS = 8000, STALL_MS = 8000;
+var LOADER_MIN_MS = 2000, LOADER_MAX_MS = 4000, STALL_MS = 8000;
 var FONT = BASE + "Fredoka-normal.woff2";
 var WALL = BASE + "final-layers/wall-tall.jpg";
 var AUDIO = BASE + "audio/";
 var SOUND_KEY = "p2story:sound";
-var SCRIPTS = ["gsap.min.js", "motion-igor.js", "p2-form.js", "p2-data.js", "p2-page.js", "p2-title.js", "p2-walk.js", "p2-arrival.js",
-  "p2-class.js", "p2-sorter.js", "p2-claw.js", "p2-results.js", "p2-party.js", "p2-family.js", "p2-final.js", "swoosh-wipe.js", "p2-sound.js", "p2-story.js"];
+var SCRIPTS = ["p2-story-bundle.js"];   // gsap, motion-igor, p2-form ... p2-story in ONE file (src/tools/make_bundle.sh)
+var extraScripts = [];                  // Grade 3-6: the game beat of this child's look (jigsaw for girls, football for boys)
 
 var $ = function (id) { return document.getElementById(id); };
-var els = { page: $("page"), replay: $("replay"), foot: $("foot"), overlay: $("overlay"), story: $("story"), loading: $("loading"),
-  skip: $("skip"), scrim: $("scrim"), tap: $("tap"), snd: $("snd") };
+var els = { page: $("page"), pageload: $("pageload"), replay: $("replay"), foot: $("foot"), overlay: $("overlay"), story: $("story"), loading: $("loading"),
+  skip: $("skip"), scrim: $("scrim"), shapes: $("shapes"), tap: $("tap"), snd: $("snd") };
 
+function isG36Grade(grade) {
+  var g = String(grade == null ? "" : grade).trim().toLowerCase().replace(/\s+/g, " ");
+  return ["grade 3", "grade 4", "grade 5", "grade 6"].indexOf(g) >= 0;
+}
+function bandFor(resp) {
+  var s = resp && resp.years && resp.years["2627"];
+  var grade = (s && s.grade) || (resp && resp.student && resp.student.grade);
+  return isG36Grade(grade) ? "g36" : "p2";
+}
 function stageFor(vw, vh) {
   var aspect = vw / Math.max(1, vh);
   var sw = aspect < 0.7 ? 1080 : Math.round((1920 * aspect) / 2) * 2;
@@ -88,53 +111,85 @@ function stageFor(vw, vh) {
 var pics = function (dir, files) { return files.map(function (f) { return BASE + dir + "-layers/" + f; }); };
 var wideBg = function (f) { return BASE + "wide/" + f; };
 var CLAW_TOYS = []; for (var i = 0; i < 12; i++) CLAW_TOYS.push("toy-" + i + ".webp");
-function scenesFor(perfect, wide, girl) {
-  var k = girl ? "girl" : "boy";
+var PUZZLE_FILES = ["bg.jpg"]; for (i = 0; i < 12; i++) PUZZLE_FILES.push("p-r" + Math.floor(i / 4) + "c" + (i % 4) + ".webp");
+for (i = 0; i < 12; i++) PUZZLE_FILES.push("s-r" + Math.floor(i / 4) + "c" + (i % 4) + ".webp");
+var FOOTBALL_FILES = ["bg.jpg", "kicker-ready.webp", "kicker-strike.webp", "kicker-follow.webp", "keeper-ready.webp", "keeper-dive-bl.webp", "keeper-dive-br.webp", "keeper-dive-tl.webp", "keeper-dive-tr.webp"];
+function scenesFor(perfect, wide, girl, band) {
+  var g36 = band === "g36";
+  var k = (girl ? "girl" : "boy") + (g36 ? "36" : "");
   var kp = function (dir, files) { return files.map(function (f) { return BASE + k + "/" + dir + "-layers/" + f; }); };
   var kw = function (f) { return BASE + k + "/wide/" + f; };
+  var game;
+  if (g36) game = girl ? (wide ? [kw("puzzle-bg.jpg")].concat(kp("puzzle", PUZZLE_FILES.slice(1))) : kp("puzzle", PUZZLE_FILES))
+                       : (wide ? [kw("football-bg.jpg")].concat(kp("football", FOOTBALL_FILES.slice(1))) : kp("football", FOOTBALL_FILES));
+  else game = girl ? [].concat(wide ? [wideBg("claw-bg.jpg")] : pics("claw", ["bg.jpg"]), pics("claw", CLAW_TOYS)) : wide ? [wideBg("sorter-bg.jpg")] : pics("sorter", ["bg.jpg"]);
   return [
     { start: 0, files: wide ? [wideBg("title.jpg")] : pics("title", ["title.jpg"]) },
     { start: 4.5, files: [].concat(wide ? [wideBg("walk-bg.jpg")] : pics("walk", ["bg.jpg"]), kp("walk", ["body.webp", "legs-a.webp", "legs-b.webp"])) },
     { start: 10.5, files: [].concat(wide ? [wideBg("arrival-bg.jpg")] : pics("arrival", ["bg.jpg"]), pics("arrival", ["group-a.webp", "group-b.webp"]), kp("arrival", ["pair-a.webp", "pair-s.webp"])) },
     { start: 18.5, files: [].concat(wide ? [wideBg("classroom-bg.jpg")] : pics("classroom", ["bg.jpg"]), kp("classroom", ["girl-a.webp", "girl-blink.webp", "girl-w1.webp", "girl-w2.webp"])) },
-    { start: 24.5, files: girl ? [].concat(wide ? [wideBg("claw-bg.jpg")] : pics("claw", ["bg.jpg"]), pics("claw", CLAW_TOYS)) : wide ? [wideBg("sorter-bg.jpg")] : pics("sorter", ["bg.jpg"]) },
-    { start: 38.5, files: perfect ? (wide ? [kw("party.jpg"), kw("party-apart.jpg")] : kp("party", ["party.jpg", "party-apart.jpg"])) : (wide ? [wideBg("wall.jpg")] : pics("results", ["wall.jpg"])) },
-    { start: 44.5, files: wide ? [kw("family.jpg")] : kp("family", ["family.jpg"]) },
-    { start: 50.5, files: [WALL] }
+    { start: 24.5, files: game },
+    { start: g36 ? 42.5 : 38.5, files: perfect ? (wide ? [kw("party.jpg"), kw("party-apart.jpg")] : kp("party", ["party.jpg", "party-apart.jpg"])) : (wide ? [wideBg("wall.jpg")] : pics("results", ["wall.jpg"])) },
+    { start: g36 ? 48.5 : 44.5, files: wide ? [kw("family.jpg")] : kp("family", ["family.jpg"]) },
+    { start: g36 ? 54.5 : 50.5, files: wide ? [WALL, wideBg("wall.jpg")] : [WALL] }
   ];
 }
 
-// ---- loading ----
-var scriptsPromise = null;
-function loadScripts() {
-  if (scriptsPromise) return scriptsPromise;
-  window.MOTION_IGOR_BASE = BASE;
-  scriptsPromise = Promise.all(SCRIPTS.map(function (name) {
-    return new Promise(function (resolve, reject) {
+// ---- scripts and font ----
+var scriptEls = {}, scriptsLoaded = {};
+function scriptsAllRun() { return SCRIPTS.concat(extraScripts).every(function (n) { return scriptsLoaded[n]; }); }
+function loadScript(name) {
+  if (!scriptEls[name]) {
+    scriptEls[name] = new Promise(function (resolve, reject) {
       var s = document.createElement("script");
       s.src = BASE + name; s.async = false;
-      s.onload = function () { resolve(); };
-      s.onerror = function () { reject(new Error("script failed: " + name)); };
+      s.onload = function () { scriptsLoaded[name] = true; resolve(); };
+      s.onerror = function () { delete scriptEls[name]; reject(new Error("script failed: " + name)); };
       document.head.appendChild(s);
     });
-  })).then(function () {
+  }
+  return scriptEls[name];
+}
+function loadScripts() {
+  window.MOTION_IGOR_BASE = BASE;
+  ensureStoryFont();
+  return Promise.all(SCRIPTS.concat(extraScripts).map(loadScript)).then(function () {
     var w = window;
     if (!w.MotionIgor || !w.P2Page || !w.P2Data) throw new Error("scripts incomplete");
-    if (!document.getElementById("p2story-font")) {
-      var st = document.createElement("style");
-      st.id = "p2story-font";
-      st.textContent = "@font-face{font-family:Fredoka;src:url(" + FONT + ") format('woff2');font-weight:300 700;font-display:block}";
-      document.head.appendChild(st);
-    }
   });
-  scriptsPromise.catch(function () { scriptsPromise = null; });
-  return scriptsPromise;
 }
-// three.js (630 KB): its text is fetched in the background; it is PARSED only while nothing animates (on the tap screen, or from 6.5 s of the story).
+var fontPromise = null;
+function ensureStoryFont() {
+  if (!fontPromise) {
+    fontPromise = (function () {
+      try {
+        var f = new FontFace("Fredoka", "url(" + FONT + ") format('woff2')", { weight: "300 700", display: "block" });
+        return f.load().then(function () { document.fonts.add(f); return true; }, function () { return false; });
+      } catch (e) { return Promise.resolve(false); }
+    })();
+    fontPromise.then(function (ok) { if (!ok) fontPromise = null; });
+  }
+  return fontPromise;
+}
+
+// Loading priority (fix round 1): 1. scripts + Fredoka + title picture, 2. walk and gate pictures, 3. music, 4. three.js, then the later scenes.
+var walkDone = Promise.resolve(), gateDone = Promise.resolve(), backgroundDone = Promise.resolve();
+function warmStory() {
+  try {
+    if (prefersReducedMotion()) return;
+    window.MOTION_IGOR_BASE = BASE;
+    ensureStoryFont();
+    var wide = stageFor(innerWidth, innerHeight).sw > 1080;
+    loadAll(scenesFor(true, wide, false, "p2")[0].files, true);
+    var sc = Promise.all(SCRIPTS.map(loadScript)); sc.catch(function () { /* reported by the loading window */ });
+  } catch (e) { /* warming is optional */ }
+}
+
+// three.js (630 KB): fetched in the background, PARSED only while nothing animates (on the tap screen, or from 6.5 s of the story).
 var threePromise = null, threeClock = { storyTime: function () { return 0; }, started: function () { return false; } };
 var THREE_RUN_AT = 6.5;
-function loadThree(storyTime, started) {
-  threeClock = { storyTime: storyTime, started: started };
+function loadThree(storyTime, started, bind) {
+  if (bind !== false) threeClock = { storyTime: storyTime, started: started };
   if (window.THREE) return Promise.resolve(true);
   if (!threePromise) {
     threePromise = new Promise(function (resolve) {
@@ -152,16 +207,46 @@ function loadThree(storyTime, started) {
   }
   return threePromise;
 }
-function primeFont(response) {
+function primeFont(resp) {
   if (document.getElementById("p2pg-style")) return;
   var tmp = document.createElement("div");
-  try { window.P2Page.mount(tmp, response, { font: FONT, wall: "data:,", entrance: false }).destroy(); } catch (e) { /* mount reports its own errors */ }
+  try { window.P2Page.mount(tmp, resp, { font: false, wall: "data:,", entrance: false }).destroy(); } catch (e) { /* mount reports its own errors */ }
 }
-var picCache = {}, picKeep = {};   // picKeep: pictures asked to be decoded stay referenced, so the decoded bitmap is still there when the scene shows them
+
+// ---- pictures: decode, hold ----
+var picCache = {}, picDone = {}, picKeep = {};   // picKeep: pictures asked to be decoded stay referenced, so the decoded bitmap is still there when the scene shows them
+var heldImgs = [];
+window.__p2HeldLeft = function () { return heldImgs.length; };
+// The story's beats are all mounted at the start and each sets the src of its own <img> right then: a picture nobody has asked for yet is HELD
+// (its <img> gets its src when the loading chain has fetched it, in story order). Pictures already asked for pass straight through.
+function holdUnrequested(fn) {
+  var d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+  if (!d || !d.set || !d.get) return fn();
+  var set = d.set, get = d.get;
+  Object.defineProperty(HTMLImageElement.prototype, "src", {
+    configurable: true, enumerable: d.enumerable,
+    get: function () { return get.call(this); },
+    set: function (v) { var u = String(v); if (u.indexOf(BASE) === 0 && !Object.prototype.hasOwnProperty.call(picCache, u)) heldImgs.push({ img: this, url: u }); else set.call(this, v); }
+  });
+  try { return fn(); } finally { Object.defineProperty(HTMLImageElement.prototype, "src", d); }
+}
+function releasePages(host) {
+  [].forEach.call(host.querySelectorAll(".p2pg"), function (el) { try { if (el.p2Release) el.p2Release(); } catch (e) { /* the page is gone */ } });
+}
+function flushHeld(onlyLoaded) {
+  var d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+  if (!d || !d.set) return;
+  for (var i = heldImgs.length - 1; i >= 0; i--) {
+    var h = heldImgs[i];
+    if (onlyLoaded && !picDone[h.url]) continue;
+    heldImgs.splice(i, 1);
+    try { d.set.call(h.img, h.url); } catch (e) { /* the element is gone */ }
+  }
+}
 function loadPic(url, decode) {
   if (!picCache[url]) picCache[url] = new Promise(function (resolve) {
     var img = new Image();
-    img.onload = function () { resolve(true); };
+    img.onload = function () { picDone[url] = true; resolve(true); };
     img.onerror = function () { resolve(false); };
     img.src = url;
     if (decode) picKeep[url] = img;
@@ -177,27 +262,31 @@ function loadAll(files, decode) { return Promise.all(files.map(function (f) { re
 
 // ---- settings ----
 function prefersReducedMotion() { try { return !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
-function lookFor(response) {
-  var g = String((response && response.student && response.student.gender) || "").trim().toUpperCase();
+function lookFor(resp) {
+  var g = String((resp && resp.student && resp.student.gender) || "").trim().toUpperCase();
   return { look: g === "F" ? "girl" : "boy" };
 }
 function readMuted() { try { return window.localStorage.getItem(SOUND_KEY) === "off"; } catch (e) { return false; } }
 function saveMuted(m) { try { window.localStorage.setItem(SOUND_KEY, m ? "off" : "on"); } catch (e) { /* blocked storage */ } }
 
 // ---- state ----
-var response = null;
+var response = null, band = "p2";
 var phase = "loading";            // loading | story | page
 var run = 0;
 var fromStory = false;
-var started = false;
+var started = false;              // the tap on "Tap to play" (or a Replay) has happened: the story clock may run
+var storyMounted = false;
+var titleIn = false, fontIn = false;
+var loaderSince = T0;
 var inst = null;
 var sound = null;
 var muted = readMuted();
 var teardown = null;              // leave the current phase's work
 var pageHandle = null;
+var unmounted = false;
 
 function getSound() {
-  if (!sound && window.P2Sound) { try { sound = window.P2Sound.create({ base: AUDIO, muted: muted }); } catch (e) { sound = null; } }
+  if (!sound && window.P2Sound) { try { sound = window.P2Sound.create({ base: AUDIO, muted: muted, deferPreload: true }); } catch (e) { sound = null; } }
   return sound;
 }
 function drawSound() {
@@ -207,6 +296,17 @@ function drawSound() {
   b.innerHTML = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M4 10h4l6-5v16l-6-5H4z" fill="#fff"/>' + (muted ? '<path d="M18 10l6 6M24 10l-6 6"/>' : '<path d="M18 9c2 2.5 2 5.5 0 8M21 6.5c3.5 4 3.5 9 0 13"/>') + "</svg>";
 }
+// the Tap screen: cream page with the shapes until the title picture is in, the button once Fredoka is in
+function drawTap() {
+  var show = phase === "story" && (!started || (!storyMounted && !scriptsAllRun()));
+  els.scrim.hidden = !show;
+  if (!show) return;
+  els.scrim.style.background = titleIn ? "rgba(16,24,43,0.38)" : "#f6f2ea";
+  els.shapes.hidden = titleIn;
+  els.tap.hidden = !fontIn;
+  if (started) els.tap.setAttribute("data-wait", "1"); else els.tap.removeAttribute("data-wait");
+  els.tap.setAttribute("aria-busy", String(started));
+}
 
 function setPhase(p) {
   if (teardown) { var t = teardown; teardown = null; try { t(); } catch (e) { /* ignore */ } }
@@ -215,50 +315,93 @@ function setPhase(p) {
   var overlay = p === "loading" || p === "story";
   els.overlay.hidden = !overlay;
   els.loading.hidden = p !== "loading";
-  els.scrim.hidden = !(p === "story" && !started);
   els.snd.hidden = p !== "story";
   els.replay.hidden = p !== "page";
   els.foot.hidden = p !== "page";
+  drawTap();
   if (p === "loading") startLoading();
   else if (p === "story") startStory();
   else startPage();
 }
+function unavailable() {
+  document.body.innerHTML = '<p style="font:600 18px system-ui;padding:24px">Could not load this story. <a href="./">Back to the links</a></p>';
+}
 
-// 1. loading: scripts + first scene's pictures, 8 s at most
+// 1. loading: the storybook loader stays up until the first scenes are truly ready: at least 2.0 s and at most 4.0 s from its first paint
 function startLoading() {
   var dead = false;
-  var timer = setTimeout(function () { if (!dead) { dead = true; setPhase("page"); } }, READY_MS);
-  teardown = function () { dead = true; clearTimeout(timer); };
-  var firstPics = loadAll(scenesFor(true, stageFor(innerWidth, innerHeight).sw > 1080, lookFor(response).look === "girl")[0].files, true);
-  loadScripts().then(function () {
-    if (dead) return null;
+  var since = loaderSince;
+  var minAt = run === 0 ? since + LOADER_MIN_MS : 0;       // a Replay has everything cached: no minimum
+  var maxAt = since + LOADER_MAX_MS - 150;                 // 150 ms early: mounting and painting the Tap screen takes about that long
+  var minPassed = performance.now() >= minAt, maxPassed = performance.now() >= maxAt, allReady = false;
+  var timers = [];
+  var clearTimers = function () { timers.forEach(function (t) { clearTimeout(t); }); };
+  var release = function () { if (dead) return; dead = true; clearTimers(); setPhase("story"); };
+  var tryRelease = function () { if (!dead && minPassed && (allReady || maxPassed)) release(); };
+  teardown = function () { dead = true; clearTimers(); };
+  if (!minPassed) timers.push(setTimeout(function () { minPassed = true; tryRelease(); }, Math.max(0, minAt - performance.now())));
+  if (!maxPassed) timers.push(setTimeout(function () { maxPassed = true; minPassed = true; tryRelease(); }, Math.max(0, maxAt - performance.now())));
+  var openWalk = function () {}, openGate = function () {}, openBackground = function () {};
+  var openWalkGate = function () { openWalk(); openGate(); };
+  walkDone = new Promise(function (res) { openWalk = res; });
+  gateDone = new Promise(function (res) { openGate = res; });
+  backgroundDone = new Promise(function (res) { openBackground = res; });
+  var going = function () { return phase !== "page" && !unmounted; };   // the chain goes on after the release (whatever is missing keeps loading), until Skip or the page
+  (async function () {
+    var wide = stageFor(innerWidth, innerHeight).sw > 1080;
+    var look = lookFor(response).look, girl = look === "girl";
+    var first3 = scenesFor(true, wide, girl, band).slice(0, 3);   // title, walk, gate
+    // step 1: the scripts, Fredoka and the title picture, together
+    var titleP = loadAll(first3[0].files, true);
+    var fontP = ensureStoryFont();
+    fontP.then(function () { if (going()) { fontIn = true; drawTap(); } });
+    titleP.then(function (ok) { if (ok && going()) { titleIn = true; drawTap(); } });
+    try { await Promise.all([loadScripts(), fontP]); } catch (e) { if (!dead) { dead = true; clearTimers(); unavailable(); } openWalkGate(); openBackground(); return; }
+    if (!going()) { openWalkGate(); openBackground(); return; }
     primeFont(response);
-    return firstPics;
-  }, function () { if (!dead) { dead = true; clearTimeout(timer); setPhase("page"); } return null; }).then(function (first) {
-    if (dead || first === null) return;
-    clearTimeout(timer); dead = true;
-    if (!first) { setPhase("page"); return; }
-    setPhase("story");
-  });
+    var walkP = loadAll(first3[1].files, true);   // starts the moment the scripts are in
+    var title = await titleP;
+    if (!title && !dead) { dead = true; clearTimers(); setPhase("page"); openWalkGate(); openBackground(); return; }
+    // step 2: the walk and gate pictures (downloaded and decoded)
+    await walkP.catch(function () {});
+    openWalk();
+    await loadAll(first3[2].files, true).catch(function () {});
+    openGate();
+    if (!going()) { openBackground(); return; }
+    window.__p2Step = 3;
+    // step 3: the music (fetched and decoded)
+    var snd = getSound();
+    try { snd && snd.preload(); } catch (e) { /* sound is optional */ }
+    try { if (snd && snd.musicReady) await snd.musicReady(); } catch (e) { /* the story plays without it */ }
+    if (!going()) { openBackground(); return; }
+    window.__p2Step = 4;
+    // step 4: three.js (the Grade 3-6 jigsaw has no WebGL and does not need it)
+    try { await (band === "g36" && look === "girl" ? Promise.resolve(true) : loadThree(function () { return 0; }, function () { return started; }, false)); } catch (e) { /* the game waits for it */ }
+    window.__p2Step = 5;
+    openBackground();
+    allReady = true;
+    tryRelease();
+  })();
+  tryRelease();   // the data wait may have used up the 4 s already: then the Tap screen comes at once
 }
 
 // 2. story
 function startStory() {
   var w = window, host = els.story;
-  var over = false, ticker = 0, resizeTimer = 0, epoch = 0;
+  var over = false, ticker = 0, resizeTimer = 0, epoch = 0, begun = false;
   var cur = { sw: 0, ps: 0 };
   var scenes = [], ready = [], failed = [], decodeAsked = [];
-  var snd = getSound();
-  try { snd && snd.preload(); } catch (e) { /* optional */ }
+  var snd = null;
   var finish = function () { if (!over) { over = true; fromStory = true; setPhase("page"); } };
+  var storyName = band === "g36" ? "p36-story" : "p2-story";
   function mountStory() {
     var st = stageFor(host.clientWidth || innerWidth, host.clientHeight || innerHeight);
     var t = inst ? inst.tl.time() : 0;
     if (inst) { try { inst.destroy(); } catch (e) { /* gone */ } inst = null; }
-    var content = Object.assign(w.P2Data.toStory(response), { base: BASE, pxScale: st.ps, lazySorter: true }, lookFor(response));
-    scenes = scenesFor(!!content.perfect, st.sw > 1080, content.look === "girl");
+    var content = Object.assign(w.P2Data.toStory(response), { base: BASE, pxScale: st.ps, lazySorter: true, holdPictures: true, band: band }, lookFor(response));
+    scenes = scenesFor(!!content.perfect, st.sw > 1080, content.look === "girl", band);
     host.style.background = "#10182b";
-    inst = w.MotionIgor.mount(host, "p2-story", { theme: "ais", fit: "contain", size: [st.sw, 1920], content: content });
+    inst = holdUnrequested(function () { return w.MotionIgor.mount(host, storyName, { theme: "ais", fit: "contain", size: [st.sw, 1920], content: content }); });
     inst.pause();
     inst.seek(t);
     w.__p2test.inst = inst;
@@ -266,11 +409,16 @@ function startStory() {
     cur = st;
     var my = ++epoch;
     ready = scenes.map(function (_, i) { return i === 0; });
+    var threeReady;
+    if (band === "g36" && content.look === "girl") threeReady = Promise.resolve(true);
+    else {
+      var clock = function () { return inst ? inst.tl.time() : 0; };
+      threeClock = { storyTime: clock, started: function () { return started; } };
+      threeReady = backgroundDone.then(function () { return loadThree(clock, function () { return started; }, false); });
+    }
     failed = scenes.map(function () { return false; });
-    var threeReady = loadThree(function () { return inst ? inst.tl.time() : 0; }, function () { return started; });   // fetched now, parsed on the tap screen or from 6.5 s
-    decodeAsked = scenes.map(function (_, i) { return i < 2; });
-    // the title and the walk (scenes 0 and 1) are downloaded and decoded now, while Tap to play is on screen; the others start after the title has played 2 s
-    // (before the tap nothing moves, so they start at once)
+    decodeAsked = scenes.map(function (_, i) { return i < 3; });
+    // the title, the walk and the gate were downloaded and decoded in the loading window (cached here); the later scenes start after the title has played 2 s
     function afterTitle() {
       return new Promise(function (res) {
         (function check() { if (over || my !== epoch || !started || (inst && inst.tl.time() >= 2)) res(); else setTimeout(check, 100); })();
@@ -278,51 +426,68 @@ function startStory() {
     }
     scenes.reduce(function (chain, s, i) {
       if (i === 0) return chain;
-      return chain.then(function () { return i >= 2 ? afterTitle() : null; }).then(function () {
-        return Promise.all([loadAll(s.files, i === 1), i === 4 ? threeReady : Promise.resolve(true)]).then(function (r) { return r[0] && r[1]; }).then(function (ok) {
+      return chain.then(function () { return i >= 3 ? backgroundDone.then(afterTitle) : i === 1 ? walkDone : gateDone; }).then(function () {
+        return Promise.all([loadAll(s.files, i <= 2), i === 4 ? threeReady : Promise.resolve(true)]).then(function (r) { return r[0] && r[1]; }).then(function (ok) {
+          flushHeld(true);
+          if (i === scenes.length - 1) releasePages(host);
           if (my === epoch) { ready[i] = ok; failed[i] = !ok; }
         });
       });
-    }, Promise.resolve());
+    }, Promise.resolve()).then(function () { flushHeld(false); });   // whatever is still held goes at the end
     inst.tl.eventCallback("onComplete", finish);
     if (started) inst.play();
     if (snd) {
       var cues = [];
-      try { cues = w.MotionIgor.registry["p2-story"].cues(content); } catch (e) { cues = []; }
+      try { cues = w.MotionIgor.registry[storyName].cues(content); } catch (e) { cues = []; }
       snd.run({
         time: function () { return inst ? inst.tl.time() : 0; },
         playing: function () { return !!inst && !inst.tl.paused() && inst.tl.timeScale() > 0; },
         rate: function () { return inst ? inst.tl.timeScale() : 1; },
-        cues: cues
+        cues: cues,
+        musicFade: band === "g36" ? [52.5, 55] : undefined   // the music bed is 55 s: Grade 3-6 (58.5 s) fades out over its last 2.5 s
       });
     }
   }
-  try {
-    mountStory();
-    var stalledSince = 0, heldByWait = false;
-    ticker = setInterval(function () {
-      if (over || !inst) return;
-      var t = inst.tl.time();
-      if (scenes.length) {
-        var lastBeat = t >= scenes[scenes.length - 1].start;
-        els.skip.style.opacity = lastBeat ? "0" : "1";
-        els.skip.style.pointerEvents = lastBeat ? "none" : "auto";
-      }
-      if (!started) return;
-      for (var d = 2; d < scenes.length; d++) if (!decodeAsked[d] && ready[d] && t >= scenes[d].start - 3.5) { decodeAsked[d] = true; loadAll(scenes[d].files, true); break; }   // one scene's pictures at a time
-      var waitingFor = -1;
-      for (var i = 1; i < scenes.length; i++) if (t >= scenes[i].start - 0.6 && !ready[i]) { waitingFor = i; break; }
-      if (waitingFor >= 0) {
-        if (failed[waitingFor]) { finish(); return; }
-        if (!stalledSince) stalledSince = Date.now();
-        if (Date.now() - stalledSince > STALL_MS) { finish(); return; }
-        if (!inst.tl.paused()) { inst.pause(); heldByWait = true; }
-      } else {
-        stalledSince = 0;
-        if (heldByWait) { heldByWait = false; if (inst.tl.paused() && inst.tl.time() < inst.duration - 0.001) inst.play(); }
-      }
-    }, 100);
-  } catch (e) { console.error("P2 story failed to start", e); finish(); }
+  function begin() {
+    if (begun || over) return;
+    begun = true;
+    primeFont(response);
+    snd = getSound();
+    try {
+      mountStory();
+      storyMounted = true; drawTap();
+      if (started) { try { snd && snd.reset(); snd && snd.unlock(); } catch (e) { /* best effort */ } }
+      var stalledSince = 0, heldByWait = false;
+      ticker = setInterval(function () {
+        if (over || !inst) return;
+        var t = inst.tl.time();
+        if (scenes.length) {
+          var lastBeat = t >= scenes[scenes.length - 1].start;
+          els.skip.style.opacity = lastBeat ? "0" : "1";
+          els.skip.style.pointerEvents = lastBeat ? "none" : "auto";
+        }
+        if (!started) return;
+        for (var d = 3; d < scenes.length; d++) if (!decodeAsked[d] && ready[d] && t >= scenes[d].start - 3.5) { decodeAsked[d] = true; loadAll(scenes[d].files, true); break; }   // one scene's pictures at a time
+        var waitingFor = -1;
+        for (var i = 1; i < scenes.length; i++) if (t >= scenes[i].start - 0.6 && !ready[i]) { waitingFor = i; break; }
+        if (waitingFor >= 0) {
+          if (failed[waitingFor]) { finish(); return; }
+          if (!stalledSince) stalledSince = Date.now();
+          if (Date.now() - stalledSince > STALL_MS) { finish(); return; }
+          if (!inst.tl.paused()) { inst.pause(); heldByWait = true; }
+        } else {
+          stalledSince = 0;
+          if (heldByWait) { heldByWait = false; if (inst.tl.paused() && inst.tl.time() < inst.duration - 0.001) inst.play(); }
+        }
+      }, 100);
+    } catch (e) { console.error("P2 story failed to start", e); finish(); }
+  }
+  if (scriptsAllRun()) begin();
+  else {
+    // the 4.0 s cap came before the scripts did: "Tap to play" is already on screen; the story mounts the moment they arrive
+    host.style.background = "#10182b";
+    loadScripts().then(function () { begin(); }, function () { if (!over) { over = true; unavailable(); } });
+  }
   function onResize() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
@@ -350,16 +515,19 @@ function startPage() {
   var dead = false;
   var afterStory = fromStory;
   fromStory = false;
+  els.pageload.hidden = !!window.P2Page;   // scripts not here yet: the storybook loader, never a blank page
   loadScripts().then(function () {
     if (dead) return;
+    els.pageload.hidden = true;
     primeFont(response);
     scrollTo(0, 0);
     try {
-      pageHandle = window.P2Page.mount(els.page, response, { scroll: "window", font: FONT, wall: WALL, entrance: !afterStory });
+      pageHandle = window.P2Page.mount(els.page, response, { scroll: "window", font: false, wall: WALL, entrance: !afterStory });
     } catch (e) { console.error("P2 page failed to mount", e); }
-  }, function (e) { console.error(e); });
+  }, function (e) { console.error(e); if (!dead) unavailable(); });
   teardown = function () {
     dead = true;
+    els.pageload.hidden = true;
     try { pageHandle && pageHandle.destroy(); } catch (e) { /* gone */ }
     pageHandle = null;
     els.page.innerHTML = "";
@@ -370,7 +538,7 @@ function startPage() {
 function tapToPlay() {
   if (started) return;
   started = true;
-  els.scrim.hidden = true;
+  drawTap();
   var s = getSound();
   try { if (!muted && window.P2Sound) window.P2Sound.unlockMedia(); } catch (e) { /* silent-switch unlock is optional */ }   // first, in the click itself: audio session = playback
   try { s && s.reset(); s && s.unlock(); } catch (e) { /* silent story */ }
@@ -384,7 +552,9 @@ els.replay.addEventListener("click", function () {
   var s = getSound();
   try { if (!muted && window.P2Sound) window.P2Sound.unlockMedia(); } catch (e) { /* optional */ }
   try { s && s.reset(); s && s.unlock(); } catch (e) { /* optional */ }
+  storyMounted = false;
   run++;
+  loaderSince = performance.now();
   scrollTo(0, 0);
   setPhase("loading");
 });
@@ -396,16 +566,21 @@ els.snd.addEventListener("click", function () {
   try { if (!muted && window.P2Sound) window.P2Sound.unlockMedia(); } catch (e) { /* optional */ }
   try { s && s.setMuted(muted); if (!muted) s && s.unlock(); } catch (e) { /* optional */ }
 });
-addEventListener("pagehide", function () { try { sound && sound.destroy(); } catch (e) { /* ignore */ } });
+addEventListener("pagehide", function () { unmounted = true; try { sound && sound.destroy(); } catch (e) { /* ignore */ } });
 
 // ---- go ----
-window.__p2test = { phase: "loading", inst: null, scenes: [], kid: kid };
+window.__p2test = { phase: "loading", inst: null, scenes: [], kid: kid, t0: T0 };
 drawSound();
+if (prefersReducedMotion()) els.overlay.hidden = true;
+warmStory();   // scripts, Fredoka and the title picture start now, while the data is on its way
 fetch("data/" + kid + ".json").then(function (r) { if (!r.ok) throw new Error("data " + r.status); return r.json(); }).then(function (json) {
   response = json;
+  band = bandFor(json);
+  extraScripts = band === "g36" ? [lookFor(json).look === "girl" ? "p36-puzzle.js" : "p36-football.js"] : [];
   window.__p2test.response = json;
+  window.__p2test.band = band;
   setPhase(prefersReducedMotion() ? "page" : "loading");
-}).catch(function (e) { console.error(e); document.body.innerHTML = '<p style="font:600 18px system-ui;padding:24px">Could not load this story. <a href="./">Back to the 4 links</a></p>'; });
+}).catch(function (e) { console.error(e); unavailable(); });
 })();
 </script>
 </body>

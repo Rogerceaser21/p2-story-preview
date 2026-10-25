@@ -134,6 +134,20 @@ function band(grade) {
 }
 function isP2(grade) { return band(grade) !== null; }
 
+// ---- the Grade 3-6 band (24 Oct 2026): same story, a different game scene (jigsaw for girls, football for boys). P-2 results above are untouched.
+var G36_BANDS = ["Grade 3", "Grade 4", "Grade 5", "Grade 6"];
+/** g36Band(grade) -> "Grade 3" | "Grade 4" | "Grade 5" | "Grade 6" for a Grade 3-6 child, else null. */
+function g36Band(grade) {
+  var g = String(grade == null ? "" : grade).trim().toLowerCase().replace(/\s+/g, " ");
+  for (var i = 0; i < G36_BANDS.length; i++) if (g === G36_BANDS[i].toLowerCase()) return G36_BANDS[i];
+  return null;
+}
+function isG36(grade) { return g36Band(grade) !== null; }
+/** storyGrade(grade): does this child get the animated story (P-2 or Grade 3-6)? */
+function storyGrade(grade) { return isP2(grade) || isG36(grade); }
+/** storyBand(grade) -> "p2" | "g36" | null: which story band the grade plays. */
+function storyBand(grade) { return isP2(grade) ? "p2" : isG36(grade) ? "g36" : null; }
+
 function nz(x) { return x != null ? x : 0; }
 
 /** One period (week / term / year) in the story's names, plus the numbers the page works out from it. */
@@ -297,7 +311,7 @@ function toPage(input) {
 }
 
 var API = { toStory: toStory, toPage: toPage, hasPerfectWeek: hasPerfectWeek, attendancePercent: attendancePercent, punctualityPercent: punctualityPercent, weekNumberOf: weekNumberOf,
-  weekEndingText: weekEndingText, weekOptionLabel: weekOptionLabel, groupWeeksByTerm: groupWeeksByTerm, newestWeekEnding: newestWeekEnding, weekHeading: weekHeading, periodForWeek: periodForWeek, studentForWeek: studentForWeek, band: band, isP2: isP2, P2_BANDS: P2_BANDS, P2_BAND_STORED: P2_BAND_STORED };
+  weekEndingText: weekEndingText, weekOptionLabel: weekOptionLabel, groupWeeksByTerm: groupWeeksByTerm, newestWeekEnding: newestWeekEnding, weekHeading: weekHeading, periodForWeek: periodForWeek, studentForWeek: studentForWeek, band: band, isP2: isP2, g36Band: g36Band, isG36: isG36, storyGrade: storyGrade, storyBand: storyBand, G36_BANDS: G36_BANDS, P2_BANDS: P2_BANDS, P2_BAND_STORED: P2_BAND_STORED };
 root.P2Data = API;
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 })(typeof window !== "undefined" ? window : globalThis);

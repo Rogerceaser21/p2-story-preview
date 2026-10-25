@@ -93,7 +93,9 @@ window.P2Kid = {
   ON: true,
   art: function (c, art) {
     var on = c.kidArt !== undefined ? !!c.kidArt : (window.P2_KID_ART !== undefined ? !!window.P2_KID_ART : (P2Kid.ON && !/[?&]kidart=0\b/.test(location.search)));
-    return on ? String(art).replace(/([^\/]*\/)$/, (c.look === "girl" ? "girl" : "boy") + "/$1") : art;
+    // Grade 3-6 (content.band "g36"): the same folders with a 36 on them (girl36 = Noor's art, boy36 = the Grade 3-6 boy), see rebuild-serve.sh
+    var kid = (c.look === "girl" ? "girl" : "boy") + (c.band === "g36" ? "36" : "");
+    return on ? String(art).replace(/([^\/]*\/)$/, kid + "/$1") : art;
   }
 };
 })();

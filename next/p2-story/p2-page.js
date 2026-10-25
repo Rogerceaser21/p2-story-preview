@@ -158,12 +158,12 @@ var CSS = [
   "@container p2pg (min-width:960px){.p2pg-kpis,.p2pg-charts{grid-template-columns:repeat(3,minmax(0,1fr))}}"
 ].join("\n");
 
-function ensureStyle(font) {
+function ensureStyle(font) {          // font === false: the page declares no face of its own and uses the "Fredoka" one the host already loaded (the family list below falls back to it): no second download
   var doc = document;
   if (!doc.getElementById("p2pg-style")) {
     var st = doc.createElement("style");
     st.id = "p2pg-style";
-    st.textContent = "@font-face{font-family:P2Fredoka;src:url(" + (font || "Fredoka-normal.woff2") + ") format('woff2');font-weight:300 700;font-display:block}\n" + CSS;
+    st.textContent = (font === false ? "" : "@font-face{font-family:P2Fredoka;src:url(" + (font || "Fredoka-normal.woff2") + ") format('woff2');font-weight:300 700;font-display:block}\n") + CSS;
     doc.head.appendChild(st);
   }
 }
@@ -208,7 +208,7 @@ function mount(el, response, opts) {
     '<div class="p2pg-rise" data-r="0.05" data-w="head"></div>' +
     '<div class="p2pg-rise p2pg-years" data-r="0.2" data-w="years"></div>' +
     '<div class="p2pg-rise" data-r="0.3" data-w="note"></div>' +
-    '<div class="p2pg-hero" aria-hidden="true"><div class="p2pg-art"><img alt="" draggable="false" src="' + esc(opts.wall || "final-layers/wall-tall.jpg") + '"></div><div class="p2pg-artw"><img alt="" draggable="false"></div></div>' +
+    '<div class="p2pg-hero" aria-hidden="true"><div class="p2pg-art"><img alt="" draggable="false"' + (opts.hold ? ' data-src="' : ' src="') + esc(opts.wall || "final-layers/wall-tall.jpg") + '"></div><div class="p2pg-artw"><img alt="" draggable="false"></div></div>' +
     '<div class="p2pg-rise" data-r="0.4" data-w="child"></div>' +
     '<div class="p2pg-kpis" data-w="kpis"></div>' +
     '<div class="p2pg-rise" data-r="1.25" data-w="week"></div>' +
@@ -223,9 +223,17 @@ function mount(el, response, opts) {
   // opts.bannerWidth = the screen width the page will really have (the story's last slide passes it): the banner follows it instead of the slide's own box
   var bw = Number(opts.bannerWidth) || 0;
   if (bw >= 700) page.setAttribute("data-bw", bw >= 960 ? "l" : "t");
-  function checkWide() { if (wideSrc && wideImg && !wideImg.getAttribute("src") && (bw || page.clientWidth) >= 700) wideImg.setAttribute("src", wideSrc); }
+  var held = !!opts.hold;                        // opts.hold: no wall picture is requested until page.p2Release() (the story asks for them after the scenes it needs first; round 2 fix 2)
+  function checkWide() { if (!held && wideSrc && wideImg && !wideImg.getAttribute("src") && (bw || page.clientWidth) >= 700) wideImg.setAttribute("src", wideSrc); }
   checkWide();
   if (root.ResizeObserver && wideSrc) { ro = new root.ResizeObserver(checkWide); ro.observe(page); }
+  page.p2Release = function () {
+    if (!held) return;
+    held = false;
+    var a = page.querySelector(".p2pg-art img[data-src]");
+    if (a) { a.setAttribute("src", a.getAttribute("data-src")); a.removeAttribute("data-src"); }
+    checkWide();
+  };
   function W(name) { return page.querySelector('[data-w="' + name + '"]'); }
   var wrap = { head: W("head"), years: W("years"), note: W("note"), child: W("child"), kpis: W("kpis"), week: W("week"), charts: W("charts"), note2: W("note2") };
 

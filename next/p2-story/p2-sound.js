@@ -38,7 +38,9 @@ var SOUNDS = {                       // sound name -> file in audio/ (gain = ext
 };
 var CUE_SOUND = {                    // story cue name -> sound name; cue names not listed here make no sound (round-start, wrong-hole, round-clear)
   swoosh: "whoosh", bell: "bell", "drop-in": "pop", "tag-absent": "thud", "tag-late": "clank", "tag-early": "switch", "counter-tick": "tap",
-  "claw-move": "claw-move", "claw-grab": "claw-grab", "toy-drop": "toy-drop", "toy-slip": "toy-slip"      // the girls' claw machine (p2-claw), only fetched when the story has them
+  "claw-move": "claw-move", "claw-grab": "claw-grab", "toy-drop": "toy-drop", "toy-slip": "toy-slip",     // the girls' claw machine (p2-claw), only fetched when the story has them
+  // Grade 3-6 game beats (24 Oct 2026), existing files only: jigsaw (p36-puzzle) piece-in = pop, piece-miss = thud; football (p36-football) kick = tap, goal = pop, post = clank
+  "piece-in": "pop", "piece-miss": "thud", kick: "tap", goal: "pop", post: "clank"
 };
 var CLAW_SOUNDS = { "claw-move": 1, "claw-grab": 1, "toy-drop": 1, "toy-slip": 1 };
 var MUSIC = { fadeInEnd: 0.8, fadeOutFrom: 50.0, fadeOutTo: 52.5, resync: 2.0 };
@@ -47,8 +49,9 @@ var JUMP = 0.8;                      // a forward step of the story clock bigger
 var PREF_KEY = "p2story:sound";       // "off" = the person turned the sound off on this device; anything else (or storage blocked) = sound on
 
 function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
-function envelope(t) {               // music level for story second t (a pure function of t, so a seek lands on the right level)
-  var up = clamp(t / MUSIC.fadeInEnd, 0, 1), down = 1 - clamp((t - MUSIC.fadeOutFrom) / (MUSIC.fadeOutTo - MUSIC.fadeOutFrom), 0, 1);
+function envelope(t, fade) {         // music level for story second t (a pure function of t, so a seek lands on the right level); fade = [from, to] of the fade-out, default the P-2 story's
+  var fo = fade || [MUSIC.fadeOutFrom, MUSIC.fadeOutTo];
+  var up = clamp(t / MUSIC.fadeInEnd, 0, 1), down = 1 - clamp((t - fo[0]) / (fo[1] - fo[0]), 0, 1);
   return up * up * (3 - 2 * up) * down * down * (3 - 2 * down);
 }
 function nowMs() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
@@ -57,6 +60,7 @@ function create(opts) {
   opts = opts || {};
   var base = opts.base || "";
   var muted = !!opts.muted;
+  var deferPreload = !!opts.deferPreload;   // the host fetches the files itself (preload()), in its own turn: the tap and run() then fetch nothing (round 2 fix 1: on a slow line the music must not jump the queue)
   var ctx = null, master = null, fxBus = null, musicBus = null;
   var raw = {}, buffers = {}, decoding = {};
   var log = [], suppressed = 0;
@@ -79,9 +83,15 @@ function create(opts) {
     return raw[name];
   }
   /** fetch every sound the story uses: the effects together, then the music bed (so the small files are never queued behind the big one) */
+  var preloaded = null;              // the newest preload chain (fetched, then decoded)
   snd.preload = function () {
     var names = usedNames().filter(function (n) { return n !== "music"; });
-    Promise.all(names.map(fetchRaw)).then(function () { return fetchRaw("music"); }).then(decodeAll, function () {});
+    preloaded = Promise.all(names.map(fetchRaw)).then(function () { return fetchRaw("music"); }).then(decodeAll, function () {});
+  };
+  /** resolves (true / false = decoded / not) once the music bed is fetched and decoded, or has failed: the loader waits for it (round 2, 25 Oct 2026) */
+  snd.musicReady = function () {
+    if (!preloaded) snd.preload();
+    return preloaded.then(function () { return decoding.music || null; }).then(function () { return !!buffers.music; }, function () { return false; });
   };
   var offline = null;                // OfflineAudioContext used only to decode before the tap (an AudioBuffer plays in any context; the source node resamples)
   function decoder() {
@@ -125,8 +135,7 @@ function create(opts) {
     }
     try { var p = ctx.resume(); if (p && typeof p.catch === "function") p.catch(function () {}); } catch (e) { /* stays silent */ }
     try { var sb = ctx.createBufferSource(); sb.buffer = ctx.createBuffer(1, 1, 22050); sb.connect(ctx.destination); sb.start(0); } catch (e) { /* iOS output unlock only */ }
-    snd.preload();
-    decodeAll();
+    if (!deferPreload || preloaded) { snd.preload(); decodeAll(); }
     return true;
   };
 
@@ -185,7 +194,7 @@ function create(opts) {
   }
   function musicTick(playing, t, jumped) {
     if (!ctx) return;
-    var env = envelope(t);
+    var env = envelope(t, clock && clock.musicFade);               // clock.musicFade = [from, to] for a story longer than the 55 s bed (Grade 3-6: 52.5 to 55)
     var want = playing && !muted && env > 0.001 && !!buffers.music && ctx.state === "running";
     if (!want) { if (music) stopMusic(0.08, t); return; }
     if (music && (jumped || Math.abs(music.off + (ctx.currentTime - music.at) - t) > MUSIC.resync)) stopMusic(0.05, t);
@@ -220,7 +229,7 @@ function create(opts) {
   /** follow this clock { time(), playing(), rate(), cues } (story seconds). Calling it again (a remount of the story at the same second) swaps the clock and keeps the bed going. */
   snd.run = function (c) {
     clock = c; lastT = lastSched = c.time(); lastWall = nowMs(); still = 0;
-    (c.cues || []).forEach(function (q) { var nm = CUE_SOUND[q.name]; if (nm && CLAW_SOUNDS[nm] && !wanted[nm]) { wanted[nm] = 1; snd.load(nm); } });
+    (c.cues || []).forEach(function (q) { var nm = CUE_SOUND[q.name]; if (nm && CLAW_SOUNDS[nm] && !wanted[nm]) { wanted[nm] = 1; if (!deferPreload || preloaded) snd.load(nm); } });
     if (fxBus) { try { fxBus.gain.cancelScheduledValues(ctx.currentTime); fxBus.gain.setValueAtTime(1, ctx.currentTime); } catch (e) { /* ignore */ } }
     if (!timer) timer = window.setInterval(tick, 25);
   };
