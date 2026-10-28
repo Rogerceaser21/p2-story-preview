@@ -12,7 +12,14 @@
  * P2Data.toStory(response) -> content for p2-story (and for every beat):
  *   { response (the raw input), child:{name,form,grade}, weekEnding:"2026-10-15", weekNumber:7, episode:"Week 7", termNumber, perfect, dataAsOf, years:["2627",...],
  *     lastWeek / term / year: { daysOpen, absent, lateToSchool, lateMinutes, earlyLeave,
- *                               attendancePct, punctualityPct, minutes, hours, lessons } }
+ *                               attendancePct, punctualityPct, minutes, hours, lessons },
+ *     days (= lastWeek's numbers, the week's school days as the games read them),
+ *     band ("p2" | "g36" | "g79" | "g1012" | null), look ("girl" when gender is F, else "boy"), grade12 (true for Grade 12 only), initials ("OA", jacket front),
+ *     classYear ("27" for a 26/27 Grade 12, else null; jacket back),
+ *     secondary (Grade 7-12 only, else null): { lateToClass: n (a COUNT, minutes always 0), bathroom: n, clinic: n, emails: [ { teacher, category, note, count } ] } for the newest week;
+ *       the emails are that week's award entries exactly as the page lists them (notes whole, never split on commas) }
+ * The secondary bands (26 Oct 2026, graph/p712-proof): Grade 7-9 = "g79", Grade 10-12 = "g1012" (storyBand / storyGrade / g79Band / g1012Band). `perfect` is unchanged:
+ * late to CLASS never blocks a 100% week (the page's rule reads late to school, absences and early leave only).
  * Week numbers and labels (D2 and D3 of the app, 22 Oct 2026): the SERVER numbers the weeks (SPEA term starts and lengths, week
  * number = whole weeks since the term's start Monday + 1, Term 1 week 1 never counted) and sends them as `weekList`
  * [{weekEnding, term, weekInTerm}] (only the weeks this child has a row in). Nothing is worked out here: the story's "Week N" is the
@@ -143,10 +150,30 @@ function g36Band(grade) {
   return null;
 }
 function isG36(grade) { return g36Band(grade) !== null; }
-/** storyGrade(grade): does this child get the animated story (P-2 or Grade 3-6)? */
-function storyGrade(grade) { return isP2(grade) || isG36(grade); }
-/** storyBand(grade) -> "p2" | "g36" | null: which story band the grade plays. */
-function storyBand(grade) { return isP2(grade) ? "p2" : isG36(grade) ? "g36" : null; }
+// ---- the secondary bands (26 Oct 2026, branch graph/p712-proof): Grade 7-9 ("g79") and Grade 10-12 ("g1012"). Stored and shown labels are the same ("Grade 8").
+var G79_BANDS = ["Grade 7", "Grade 8", "Grade 9"];
+var G1012_BANDS = ["Grade 10", "Grade 11", "Grade 12"];
+function bandOf(list, grade) {
+  var g = String(grade == null ? "" : grade).trim().toLowerCase().replace(/\s+/g, " ");
+  for (var i = 0; i < list.length; i++) if (g === list[i].toLowerCase()) return list[i];
+  return null;
+}
+/** g79Band(grade) -> "Grade 7" | "Grade 8" | "Grade 9" for a Grade 7-9 child, else null. */
+function g79Band(grade) { return bandOf(G79_BANDS, grade); }
+function isG79(grade) { return g79Band(grade) !== null; }
+/** g1012Band(grade) -> "Grade 10" | "Grade 11" | "Grade 12" for a Grade 10-12 child, else null. */
+function g1012Band(grade) { return bandOf(G1012_BANDS, grade); }
+function isG1012(grade) { return g1012Band(grade) !== null; }
+/** storyGrade(grade): does this child get the animated story (P-2, Grade 3-6, Grade 7-9 or Grade 10-12)? */
+function storyGrade(grade) { return isP2(grade) || isG36(grade) || isG79(grade) || isG1012(grade); }
+/** storyBand(grade) -> "p2" | "g36" | "g79" | "g1012" | null: which story band the grade plays. */
+function storyBand(grade) { return isP2(grade) ? "p2" : isG36(grade) ? "g36" : isG79(grade) ? "g79" : isG1012(grade) ? "g1012" : null; }
+
+/** isSecondaryStudent(student): copied from src/lib/attendance.ts. The 26/27 parent page shows late to class, bathroom, clinic and the awards for these children only. */
+function isSecondaryStudent(s) {
+  if (s.school) return s.school === "Secondary";
+  return /^grade\s*(7|8|9|10|11|12)$/i.test((s.grade == null ? "" : String(s.grade)).trim());
+}
 
 function nz(x) { return x != null ? x : 0; }
 
@@ -196,6 +223,27 @@ function weekNumberOf(iso, weekList) {
   return null;
 }
 
+/** The first letter (a whole character, Arabic letters too) of the first word of a name, upper-cased; "" when there is none. */
+function firstLetter(s) {
+  var w = String(s == null ? "" : s).trim().split(/\s+/)[0] || "";
+  var ch = Array.from(w)[0] || "";
+  return ch.toUpperCase();
+}
+/** The initials worn on the Grade 12 jacket: first letter of the first name + first letter of the surname ("OA"). One letter when there is no surname. */
+function initialsOf(student) {
+  var fore = student.forename != null && student.forename !== "" ? student.forename : student.name;
+  return firstLetter(fore) + firstLetter(student.surname);
+}
+/** The award entries of one week, exactly as the page's AwardList gets them (notes whole, never split; count 1 when missing). weekEnding undefined = every week; null = none. */
+function awardEntries(list, weekEnding) {
+  var out = [];
+  (list || []).forEach(function (a) {
+    if (weekEnding !== undefined && a.weekEnding !== weekEnding) return;
+    out.push({ weekEnding: a.weekEnding, category: a.category == null ? "" : a.category, teacher: a.teacher == null ? "" : a.teacher, note: a.note == null ? "" : a.note, count: a.count == null ? 1 : a.count });
+  });
+  return out;
+}
+
 function toStory(response) {
   var years = (response && response.years) || {};
   var student = years["2627"] || (response && response.student);
@@ -204,7 +252,21 @@ function toStory(response) {
   var n = weekNumberOf(student.lastWeekEnding, response && response.weekList);
   var asOfBy = (response && response.dataAsOfByYear) || {};
   var keys = Object.keys(years);
+  var yearKey = String(student.year || "2627");
+  var grade12 = g1012Band(student.grade) === "Grade 12";
+  var wk = per.week || {};
   return {
+    // secondary stories (Grade 7-12, 26 Oct 2026): which band the grade plays and which look (girl = F; M, blank or unreadable = boy). The app may override both (?band= and ?look= on the link).
+    band: storyBand(student.grade),
+    look: String(student.gender == null ? "" : student.gender).trim().toUpperCase() === "F" ? "girl" : "boy",
+    grade12: grade12,                                                  // the senior jacket + the taller Grade 12 figure
+    initials: initialsOf(student),                                     // jacket front, left chest ("OA")
+    classYear: grade12 ? yearKey.slice(2) : null,                      // jacket back: "27" for the 26/27 Grade 12 (the class of 2027)
+    // late to class (a COUNT, minutes always 0), bathroom, clinic and the week's award entries: the numbers the 26/27 page's "More about this year" shows for the newest week. Null for primary children.
+    secondary: isSecondaryStudent(student) ? {
+      lateToClass: nz(wk.lateToClass), bathroom: nz(wk.bathroom), clinic: nz(wk.clinic),
+      emails: awardEntries(student.awards, student.lastWeekEnding != null ? student.lastWeekEnding : null).map(function (a) { return { teacher: a.teacher, category: a.category, note: a.note, count: a.count }; })
+    } : null,
     child: { name: student.forename != null && student.forename !== "" ? student.forename : student.name, form: student.form, grade: student.grade },
     weekEnding: student.lastWeekEnding || null,
     weekEndingText: weekEndingText(student.lastWeekEnding),          // "Week ending 15 Oct", the page's own label
@@ -215,6 +277,7 @@ function toStory(response) {
     dataAsOf: asOfBy["2627"] != null ? asOfBy["2627"] : (response && response.dataAsOf != null ? response.dataAsOf : null),
     years: keys.length ? keys : (student.year ? [student.year] : []),
     lastWeek: period(student, per.week),
+    days: period(student, per.week),    // the week's school days as the games read them (daysOpen, absent, lateToSchool, earlyLeave: the same numbers as lastWeek)
     term: period(student, per.term),
     year: period(student, per.year),
     response: response                  // the raw response, kept so the last beat (P2Page) can show the whole page from it
@@ -245,6 +308,23 @@ function pageYear(student, key, dataAsOf, weekList, picked) {
   var termAbsent = nz(pickOld(st.validAbsenceThisTerm, tm.absentValid)) + nz(pickOld(st.invalidAbsenceThisTerm, tm.absentInvalid));
   var yearAbsent = nz(pickOld(st.validAbsenceThisYear, yr.absentValid)) + nz(pickOld(st.invalidAbsenceThisYear, yr.absentInvalid));
   var lateWeek = nz(pickOld(st.lateToSchoolThisWeek, wk.lateToSchool));
+  // 26/27, secondary children only (the page's `showClassMeasures`): "More about this year" = late to class (a count), bathroom visits, clinic visits, each with the
+  // chosen week / This Term / This Year bars (st.periods, the chosen week's numbers swapped in), then the recognition awards: the year's total, the chosen week's entries, all the year's entries.
+  var secondary = null;
+  if (cur && isSecondaryStudent(st)) {
+    var charts = {}, order = ["lateToClass", "bathroom", "clinic"];
+    order.forEach(function (k) { charts[k] = { week: nz(wk[k]), term: nz(tm[k]), year: nz(yr[k]) }; });
+    secondary = {
+      heading: "More about this year",
+      order: order,
+      titles: { lateToClass: "Late to Class", bathroom: "Bathroom Visits", clinic: "Clinic Visits" },
+      charts: charts,
+      awardsYear: nz(yr.awards),
+      weekHeading: heading ? heading.name + (heading.sub ? " \u00b7 " + heading.sub : "") : null,        // "Last Week \u00b7 Week ending 15 Oct"
+      weekAwards: awardEntries(st.awards, chosen),
+      allAwards: awardEntries(st.awards)
+    };
+  }
   return {
     year: key,
     current: cur,
@@ -266,7 +346,8 @@ function pageYear(student, key, dataAsOf, weekList, picked) {
       absence: { week: weekAbsent, term: termAbsent, year: yearAbsent },
       late: { week: lateWeek, term: nz(pickOld(st.lateToSchoolThisTerm, tm.lateToSchool)), year: nz(pickOld(st.lateToSchoolThisYear, yr.lateToSchool)) },
       early: { week: nz(pickOld(st.earlyLeaveThisWeek, wk.earlyLeave)), term: nz(pickOld(st.earlyLeaveThisTerm, tm.earlyLeave)), year: nz(pickOld(st.earlyLeaveThisYear, yr.earlyLeave)) }
-    }
+    },
+    secondary: secondary                                                       // null for primary children and for 25/26
   };
 }
 
@@ -281,6 +362,11 @@ function responseFromStory(c) {
     lateToClassThisWeek: c.lastWeek.lateToSchool, earlyLeaveThisWeek: c.lastWeek.earlyLeave,
     validAbsenceLast7Days: c.lastWeek.absent, invalidAbsenceLast7Days: 0
   };
+  if (c.secondary) {          // a secondary child's story content: the week's class numbers and award entries (term / year totals are not in the story content)
+    student.school = "Secondary";
+    student.periods.week.lateToClass = c.secondary.lateToClass; student.periods.week.bathroom = c.secondary.bathroom; student.periods.week.clinic = c.secondary.clinic; student.periods.week.awards = (c.secondary.emails || []).length;
+    student.awards = (c.secondary.emails || []).map(function (e) { return { weekEnding: c.weekEnding, category: e.category, teacher: e.teacher, note: e.note, count: e.count }; });
+  }
   return { student: student, defaultYear: "2627", years: { "2627": student }, dataAsOf: c.dataAsOf != null ? c.dataAsOf : null, dataAsOfByYear: { "2627": c.dataAsOf != null ? c.dataAsOf : null } };
 }
 
@@ -311,7 +397,7 @@ function toPage(input) {
 }
 
 var API = { toStory: toStory, toPage: toPage, hasPerfectWeek: hasPerfectWeek, attendancePercent: attendancePercent, punctualityPercent: punctualityPercent, weekNumberOf: weekNumberOf,
-  weekEndingText: weekEndingText, weekOptionLabel: weekOptionLabel, groupWeeksByTerm: groupWeeksByTerm, newestWeekEnding: newestWeekEnding, weekHeading: weekHeading, periodForWeek: periodForWeek, studentForWeek: studentForWeek, band: band, isP2: isP2, g36Band: g36Band, isG36: isG36, storyGrade: storyGrade, storyBand: storyBand, G36_BANDS: G36_BANDS, P2_BANDS: P2_BANDS, P2_BAND_STORED: P2_BAND_STORED };
+  weekEndingText: weekEndingText, weekOptionLabel: weekOptionLabel, groupWeeksByTerm: groupWeeksByTerm, newestWeekEnding: newestWeekEnding, weekHeading: weekHeading, periodForWeek: periodForWeek, studentForWeek: studentForWeek, band: band, isP2: isP2, g36Band: g36Band, isG36: isG36, storyGrade: storyGrade, storyBand: storyBand, G36_BANDS: G36_BANDS, g79Band: g79Band, isG79: isG79, G79_BANDS: G79_BANDS, g1012Band: g1012Band, isG1012: isG1012, G1012_BANDS: G1012_BANDS, isSecondaryStudent: isSecondaryStudent, P2_BANDS: P2_BANDS, P2_BAND_STORED: P2_BAND_STORED };
 root.P2Data = API;
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 })(typeof window !== "undefined" ? window : globalThis);

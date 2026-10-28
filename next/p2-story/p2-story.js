@@ -9,13 +9,19 @@
  * The walk to school (6 s: mum and Noor from behind up the school path) plays between the title and the gate, so the gate and
  * everything after it start 6 s later. The three-round sorter (14 s, was 7 s) makes the story 54.5 s in all.
  * Needs swoosh-wipe.js from the kit loaded alongside the beats.
+ * Secondary (Grade 7-12, 26 Oct 2026, Phase 5): modules g79-story (Grade 7-9 girl: show jumping, art girl79) and g1012-story (Grade 10-12 boy: pool, art boy1012). Beats: p712-title 4.5, p712-walk 6,
+ * p712-friends 8, p712-class 6, the game 18, p712-around (3 or 6, P712Around.duration), p2-results OR p712-celebrate 6, p712-family (P712Family.duration, data driven), p2-final 4. The length
+ * is DATA DRIVEN (about 66 to 95 s): build() sets the instance length from the beat list, MotionIgor.registry[id].beatsFor(content) gives the list (the app uses it for its picture loading).
+ * The music bed is 55 s: longer stories fade it out over its last 2.5 s (musicFade in the app, p2-sound.js envelope). The games emit their own counter-ticks: none are added here.
  * content.look === "girl": the sorter beat is the claw machine (p2-claw, same 14 s, same three rounds, same data); anything else is the peg sorter (p2-sorter).
  * Sound: MotionIgor.registry["p2-story"].cues(content) lists every sound moment of the story ([{ t, name, beat }], story seconds): a swoosh at each wipe, the
  * bell (p2-class), the sorter's (or the claw machine's) drops / tags and a counter-tick per counter step. p2-sound.js plays them off the story clock; nothing here makes sound.
  */
 (function () {
 // beats in play order with their start second (b.at). 100% = the parent page's hasPerfectWeek: the class party; otherwise the results card. Exactly one of the two plays, so the story is the same length either way.
-function beatList(perfect, look, band) {
+function beatList(perfect, look, band, c) {
+  if (band === "g79") return girl79List(perfect, c);
+  if (band === "g1012") return secondaryList(perfect, look, band, c);
   var g36 = band === "g36";                                           // Grade 3-6: the game scene is 18 s (three rounds of 6 s): jigsaw for girls, football for boys; everything after it starts 4 s later
   var list = [
     { id: "p2-title", dur: 4.5, art: "title-layers/" },
@@ -28,9 +34,52 @@ function beatList(perfect, look, band) {
     { id: "p2-family", dur: 6, art: "family-layers/" },
     { id: "p2-final", dur: 4, art: "final-layers/" }
   ];
+  return place(list);
+}
+function place(list) {
   var at = 0;
   list.forEach(function (b) { b.at = at; at += b.dur; });
   return list;
+}
+// Secondary stories (Grade 7-9 girl = g79, Grade 10-12 boy = g1012): same engine, their own scenes. Around school and the family table are DATA DRIVEN (P712Around.duration, P712Family.duration).
+// c = the merged story content (defaults + the child's data); without it the data driven scenes get their shortest length.
+function secondaryList(perfect, look, band, c) {
+  c = c || {};
+  var A = window.P712Around && c.secondary ? P712Around.duration(c) : 6, F = window.P712Family && c.secondary ? P712Family.duration(c) : 8;
+  var list = [
+    { id: "p712-title", dur: 4.5, art: "title-layers/" },
+    { id: "p712-walk", dur: 6, art: "walk-layers/" },
+    { id: "p712-friends", dur: 8, art: "friends-layers/" },
+    { id: "p712-class", dur: 6, art: "classroom-layers/" },
+    band === "g79" ? { id: "p712-showjump", dur: 18, art: "showjump-layers/" } : { id: "p712-pool", dur: 18, art: "pool-layers/" },   // Grade 7-9 girls: show jumping; Grade 10-12 boys: pool (Grade 7-9 boys will reuse the football later)
+    { id: "p712-around", dur: A, art: "around-layers/" },
+    perfect ? { id: "p712-celebrate", dur: 6, art: "celebrate-layers/" } : { id: "p2-results", dur: 6, art: "results-layers/" },
+    { id: "p712-family", dur: F, art: "family-layers/" },
+    { id: "p2-final", dur: 4, art: "final-layers/" }
+  ];
+  return place(list);
+}
+// Grade 7-9 girl (g79), rebuilt 27 Oct 2026 to P-2 quality (Igor's list): the P-2 storybook title (no student), longer scenes, the classroom ON TIME or LATE (orange crosses),
+// the bathroom pass and the clinic as two scenes (6 s each, 4 s at 0 visits), the family email loop (about 7 s per email, up to 5). Girl-only modules p79-*; show jumping, the results card
+// and the final page are reused. Bathroom, clinic and family are DATA DRIVEN (P79Bathroom / P79Clinic / P79Family .duration(content)).
+function girl79List(perfect, c) {
+  c = c || {};
+  var has = !!c.secondary;
+  function d(mod, fallback) { return window[mod] && has ? window[mod].duration(c) : fallback; }
+  var list = [
+    { id: "p2-title", dur: 4.5, art: "title-layers/" },
+    { id: "p79-walk", dur: 4, art: "walk-layers/" },                     // 28 Oct 2026 (Igor's storyboard notes): walk 4 s, friends 4 s, ONE classroom scene 5 s / 12 s,
+    { id: "p79-friends", dur: 4, art: "friends-layers/" },               // continuous show jumping (p79-showjump), results and celebration 4 s
+    { id: "p79-class", dur: d("P79Class", 5), art: "classroom-layers/" },
+    { id: "p79-showjump", dur: 18, art: "showjump-layers/" },
+    { id: "p79-bathroom", dur: d("P79Bathroom", 4), art: "bathroom-layers/" },
+    { id: "p79-clinic", dur: d("P79Clinic", 4), art: "clinic-layers/" },
+    perfect ? { id: "p79-celebrate", dur: 4, art: "celebrate-layers/" } : { id: "p79-results", dur: 2, art: "results-layers/" },
+    perfect ? null : { id: "p79-reward", dur: 3, art: "results-layers/" },          // round 3 (28 Oct 2026): results card 2 s, then a gold star reward for a not-100% week
+    { id: "p79-family", dur: d("P79Family", 7), art: "family-layers/" },
+    { id: "p2-final", dur: 4, art: "final-layers/" }
+  ].filter(Boolean);
+  return place(list);
 }
 var SPEED = 3, WIPE = 1.4 / SPEED, COVER = 0.7 / SPEED;
 // Sound cues of the whole story: [{ t, name, beat }] in story seconds (the sound layer, p2-sound.js, plays them off the story clock).
@@ -43,7 +92,7 @@ var SPEED = 3, WIPE = 1.4 / SPEED, COVER = 0.7 / SPEED;
 var SORTER_RD = 4.6, SORTER_TICK_LAG = 0.06, G36_RD = 6;           // G36_RD: round length of the Grade 3-6 game beats (p36-puzzle, p36-football)
 function storyCues(content, band, id) {
   var c = MotionIgor.util.deepMerge(MotionIgor.registry[id || "p2-story"].defaults, content || {});
-  var beats = beatList(!!c.perfect, c.look, band), out = [], last = beats[beats.length - 1];
+  var beats = beatList(!!c.perfect, c.look, band, c), out = [], last = beats[beats.length - 1];
   beats.slice(1).forEach(function (b) { out.push({ t: +(b.at - COVER).toFixed(3), name: "swoosh", beat: b.id }); });
   beats.forEach(function (b) {
     var def = MotionIgor.registry[b.id];
@@ -91,6 +140,10 @@ MotionIgor.define({
     year: { daysOpen: 22, absent: 0, lateToSchool: 0, lateMinutes: 0, earlyLeave: 0, attendancePct: 100, punctualityPct: 100, minutes: 0, hours: 0, lessons: 0 },
     response: null,                    // the raw fetch-student-data response (P2Data.toStory(response).response): the last beat draws the whole page from it
     dataAsOf: "2026-10-20",
+    secondary: null,                   // Grade 7-12 only (P2Data.toStory): { lateToClass, bathroom, clinic, emails: [{ teacher, category, note, count }] } of the newest week
+    grade12: false,                    // Grade 12 only: the senior jacket (name, initials, 27) and the taller figure
+    initials: "",                      // the jacket front ("OA")
+    classYear: null,                   // the jacket back ("27" for the class of 2027)
     look: ""                           // "girl": the claw machine (p2-claw) instead of the peg sorter in the sorter beat, handed to every beat. The link sets it from the child's gender (?look=girl|boy overrides)
   },
   build: function (ctx) {
@@ -100,7 +153,9 @@ MotionIgor.define({
     var GOLD = "#f2b632", BLUE = "#2f6fe0", GREEN = "#2fa84f", INK = "#10203f";
     // 100% = the parent page's hasPerfectWeek (computed by P2Data.toStory): the class party; otherwise the results card. Exactly one of the two plays, so the story is the same length either way.
     var perfect = !!c.perfect;
-    var BEATS = beatList(perfect, c.look, band);                              // 54.5 s in all (P-2), 58.5 s (Grade 3-6)
+    var BEATS = beatList(perfect, c.look, band, c);                           // 54.5 s in all (P-2), 58.5 s (Grade 3-6), secondary: the sum of the beats (data driven)
+    var TOTAL = BEATS[BEATS.length - 1].at + BEATS[BEATS.length - 1].dur;
+    if (band === "g79" || band === "g1012") ctx.def.duration = TOTAL;     // the kit reads def.duration after build(): the secondary stories are as long as their beats
     function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
     function seg(t, a, b) { return clamp((t - a) / (b - a), 0, 1); }
     function outBack(x) { var k = 1.9; x = x - 1; return 1 + (k + 1) * x * x * x + k * x * x; }
@@ -112,9 +167,10 @@ MotionIgor.define({
 
     function nestBeat(h, b) {
       ctx.nest(h, b.id, { at: b.at, dur: b.dur, size: [SW, 1920], content: {
-        // p36-football uses content.art as it is (no P2Kid inside): the story hands it the boy36 folder; p36-puzzle resolves girl36 itself with P2Kid.art, like the kid pictures of the other beats
-        art: c.base + (b.id === "p36-football" ? P2Kid.art({ look: c.look, band: band }, b.art) : b.art), child: c.child, episode: c.episode, weekEnding: c.weekEnding, weekEndingText: c.weekEndingText, weekNumber: c.weekNumber, perfect: c.perfect,
-        lastWeek: c.lastWeek, term: c.term, year: c.year, response: c.response, dataAsOf: c.dataAsOf, pxScale: c.pxScale, look: c.look, holdPictures: c.holdPictures, band: band, chrome: false
+        // p36-football, p712-showjump, p79-showjump and p712-pool use content.art as it is (no P2Kid inside): the story hands it the boy36 folder; p36-puzzle resolves girl36 itself with P2Kid.art, like the kid pictures of the other beats
+        art: c.base + (b.id === "p36-football" || b.id === "p712-showjump" || b.id === "p79-showjump" || b.id === "p712-pool" ? P2Kid.art({ look: c.look, band: band }, b.art) : b.art), child: c.child, episode: c.episode, weekEnding: c.weekEnding, weekEndingText: c.weekEndingText, weekNumber: c.weekNumber, perfect: c.perfect,
+        lastWeek: c.lastWeek, term: c.term, year: c.year, response: c.response, dataAsOf: c.dataAsOf, pxScale: c.pxScale, look: c.look, holdPictures: c.holdPictures, band: band, chrome: false,
+        secondary: c.secondary, grade12: c.grade12, initials: c.initials, classYear: c.classYear
       } });
     }
     var lazy = null;                                                  // { h, b }: the beat that waits for three.js
@@ -171,4 +227,11 @@ MotionIgor.define({
 }
 defineStory("p2-story", "p2", 54.5, "P-2 report · story");
 defineStory("p36-story", "g36", 58.5, "Grade 3-6 report · story");
+defineStory("g79-story", "g79", 75.5, "Grade 7-9 girl report · story");     // 75.5 s = the shortest case (0 visits, 0 emails); the real length is set in build()
+defineStory("g1012-story", "g1012", 66, "Grade 10-12 boy report · story");
+// beatsFor(content) = the beat list with start seconds for the child's data (the app's picture loading needs it)
+["p2-story", "p36-story", "g79-story", "g1012-story"].forEach(function (id) {
+  var band = id === "p36-story" ? "g36" : id === "g79-story" ? "g79" : id === "g1012-story" ? "g1012" : "p2";
+  MotionIgor.registry[id].beatsFor = function (content) { var c = MotionIgor.util.deepMerge(MotionIgor.registry[id].defaults, content || {}); return beatList(!!c.perfect, c.look, band, c); };
+});
 })();

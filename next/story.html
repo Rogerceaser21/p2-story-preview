@@ -69,12 +69,13 @@
 <script>
 (function () {
 "use strict";
-// Plain JS port of P2Story.tsx (attendance app, branch graph/p36-proof, tip 8df3db5). Same flow: loading (2-4 s) -> story (Tap to play) -> page (P2Page) with Replay.
-// Bands: "p2" = Pre Kindy to Grade 2 (54.5 s), "g36" = Grade 3 to 6 (58.5 s, an 18 s game scene: jigsaw for girls, football for boys).
+// Plain JS port of P2Story.tsx (attendance app, branch graph/p36-proof, tip 8df3db5; the Grade 7-9 girl band g79 ported from graph/p712-proof, 28 Oct 2026). Same flow: loading (2-4 s) -> story (Tap to play) -> page (P2Page) with Replay.
+// Bands: "p2" = Pre Kindy to Grade 2 (54.5 s), "g36" = Grade 3 to 6 (58.5 s, an 18 s game scene: jigsaw for girls, football for boys),
+// "g79" = Grade 7 to 9 GIRL (about 70 to 95 s, data driven: show jumping, bathroom pass, clinic, teacher emails; second script bundle p712-story-bundle.js).
 var T0 = performance.now();   // the loader is in the page's own HTML, so this is its first paint
 
 // ---- which child ----
-var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100", "g36-girl-100", "g36-girl-not100", "g36-boy-100", "g36-boy-not100"];
+var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100", "g36-girl-100", "g36-girl-not100", "g36-boy-100", "g36-boy-not100", "g79-girl-100", "g79-girl-not100"];
 var kid = new URLSearchParams(location.search).get("kid");
 if (KIDS.indexOf(kid) < 0) { location.replace("./"); return; }
 
@@ -86,7 +87,8 @@ var WALL = BASE + "final-layers/wall-tall.jpg";
 var AUDIO = BASE + "audio/";
 var SOUND_KEY = "p2story:sound";
 var SCRIPTS = ["p2-story-bundle.js"];   // gsap, motion-igor, p2-form ... p2-story in ONE file (src/tools/make_bundle.sh)
-var extraScripts = [];                  // Grade 3-6: the game beat of this child's look (jigsaw for girls, football for boys)
+var extraScripts = [];                  // Grade 3-6: the game beat of this child's look (jigsaw for girls, football for boys); Grade 7-9: the second bundle p712-story-bundle.js
+var SECONDARY_SCRIPT = "p712-story-bundle.js";
 
 var $ = function (id) { return document.getElementById(id); };
 var els = { page: $("page"), pageload: $("pageload"), replay: $("replay"), foot: $("foot"), overlay: $("overlay"), story: $("story"), loading: $("loading"),
@@ -96,11 +98,18 @@ function isG36Grade(grade) {
   var g = String(grade == null ? "" : grade).trim().toLowerCase().replace(/\s+/g, " ");
   return ["grade 3", "grade 4", "grade 5", "grade 6"].indexOf(g) >= 0;
 }
+function isG79Grade(grade) {
+  var g = String(grade == null ? "" : grade).trim().toLowerCase().replace(/\s+/g, " ");
+  return ["grade 7", "grade 8", "grade 9"].indexOf(g) >= 0;
+}
 function bandFor(resp) {
   var s = resp && resp.years && resp.years["2627"];
   var grade = (s && s.grade) || (resp && resp.student && resp.student.grade);
-  return isG36Grade(grade) ? "g36" : "p2";
+  return isG79Grade(grade) ? "g79" : isG36Grade(grade) ? "g36" : "p2";
 }
+var storyIdOf = function (b) { return b === "g36" ? "p36-story" : b === "g79" ? "g79-story" : "p2-story"; };
+var isSecondaryBand = function (b) { return b === "g79"; };   // g1012 (Grade 10-12 boy) is not on this site
+var noThree = function (b, look) { return isSecondaryBand(b) || (b === "g36" && look === "girl"); };   // show jumping is plain DOM: no WebGL, no three.js
 function stageFor(vw, vh) {
   var aspect = vw / Math.max(1, vh);
   var sw = aspect < 0.7 ? 1080 : Math.round((1920 * aspect) / 2) * 2;
@@ -114,7 +123,45 @@ var CLAW_TOYS = []; for (var i = 0; i < 12; i++) CLAW_TOYS.push("toy-" + i + ".w
 var PUZZLE_FILES = ["bg.jpg"]; for (i = 0; i < 12; i++) PUZZLE_FILES.push("p-r" + Math.floor(i / 4) + "c" + (i % 4) + ".webp");
 for (i = 0; i < 12; i++) PUZZLE_FILES.push("s-r" + Math.floor(i / 4) + "c" + (i % 4) + ".webp");
 var FOOTBALL_FILES = ["bg.jpg", "kicker-ready.webp", "kicker-strike.webp", "kicker-follow.webp", "keeper-ready.webp", "keeper-dive-bl.webp", "keeper-dive-br.webp", "keeper-dive-tl.webp", "keeper-dive-tr.webp"];
-function scenesFor(perfect, wide, girl, band) {
+// ---- G79 FILES BEGIN (tools/g79-files.mjs reads this block: keep it self-contained) ----
+// The pictures of each Grade 7-9 girl scene (a port of secondaryScenes() in P2Story.tsx; tools/sync-g79.sh warns when that function changes). sec = content.secondary.
+var SHOWJUMP_FIGS = ["canter", "clear", "finish", "finishplain", "knocked", "landing", "refusal", "runout", "takeoff"].map(function (n) { return "fig-" + n + ".webp"; });
+function g79FilesOf(id, wide, sec, base) {
+  var kid = "girl79";
+  sec = sec || {};
+  var late = (sec.lateToClass || 0) > 0, bath = sec.bathroom || 0, clinic = sec.clinic || 0;
+  var kp = function (dir, files) { return files.map(function (f) { return base + kid + "/" + dir + "-layers/" + f; }); };
+  var kw = function (file) { return base + kid + "/wide/" + file; };
+  var shared = function (dir, files) { return files.map(function (f) { return base + dir + "-layers/" + f; }); };
+  var wideShared = function (file) { return base + "wide/" + file; };
+  var wall = base + "final-layers/wall-tall.jpg";
+  var cat = function () { return [].concat.apply([], arguments); };
+  switch (id) {
+    case "p2-title": return wide ? [wideShared("title.jpg")] : shared("title", ["title.jpg"]);
+    case "p79-walk": return cat(wide ? [wideShared("walk-bg.jpg")] : shared("walk", ["bg.jpg"]), kp("walk", ["body.webp", "legs-a.webp", "legs-b.webp"]));
+    case "p79-friends": return wide ? [kw("friends-a.jpg"), kw("friends-b.webp"), kw("friends-mum.webp")] : kp("friends", ["friends-a.jpg", "friends-b.webp", "friends-mum.webp"]);
+    case "p79-class":
+      var parts = ["late.jpg", "late-clock.webp", "door-happy.webp", "door-wave.webp", "door-teacher.webp"].concat(late ? ["late-sheepish.webp", "late-teacher.webp"] : []);
+      return wide ? parts.map(kw) : kp("classroom", parts);
+    case "p79-bathroom": return wide ? [kw("bathroom-pass.jpg")] : kp("bathroom", ["bath.jpg"]);
+    case "p79-showjump": return kp("showjump", SHOWJUMP_FIGS.filter(function (f) { return f !== "fig-finish.webp"; }).concat(["sj2-bg.webp", "sj2-sand.webp", "fence1.webp", "fence1-wing.webp", "fence2.webp", "fence2-wing.webp", "pole2.webp", "fence3.webp", "fence3-wing.webp"]));
+    case "p79-results": return wide ? [wideShared("wall.jpg")] : shared("results", ["wall.jpg"]);
+    case "p79-reward": return wide ? [wideShared("wall.jpg")] : shared("results", ["wall.jpg"]);
+    case "p79-clinic": return wide ? cat([kw("clinic-closed-pro.jpg"), kw("clinic-closed-blink.jpg")], clinic ? [kw("clinic-crack.jpg"), kw("clinic-half.jpg"), kw("clinic-open-pro.jpg"), kw("clinic-open-blink.jpg")] : [])
+                                  : kp("clinic", ["closed.jpg", "closed-blink.jpg"].concat(clinic ? ["crack.jpg", "half.jpg", "open.jpg", "open-blink.jpg"] : []));
+    case "p79-celebrate": return wide ? [kw("party.jpg"), kw("party-apart.jpg")] : kp("celebrate", ["party.jpg", "party-apart.jpg"]);
+    case "p79-family": return wide ? [kw("family-poseA.jpg"), kw("family-poseB.jpg")] : kp("family", ["poseA.jpg", "poseB.jpg"]);
+    default: return wide ? [wall, wideShared("wall.jpg")] : [wall];   // p2-final
+  }
+}
+// ---- G79 FILES END ----
+function g79Scenes(wide, content) {
+  var sec = content && content.secondary || {};
+  var beats = content && window.MotionIgor ? window.MotionIgor.registry["g79-story"].beatsFor(content) : ["p2-title", "p79-walk", "p79-friends"].map(function (id) { return { id: id, at: 0 }; });
+  return beats.map(function (b) { return { start: b.at, files: g79FilesOf(b.id, wide, sec, BASE) }; });
+}
+function scenesFor(perfect, wide, girl, band, content) {
+  if (band === "g79") return g79Scenes(wide, content);
   var g36 = band === "g36";
   var k = (girl ? "girl" : "boy") + (g36 ? "36" : "");
   var kp = function (dir, files) { return files.map(function (f) { return BASE + k + "/" + dir + "-layers/" + f; }); };
@@ -152,6 +199,7 @@ function loadScript(name) {
 }
 function loadScripts() {
   window.MOTION_IGOR_BASE = BASE;
+  window.P712_JACKET_FONT_URL = BASE + "art/fonts/Graduate-az09.woff2";   // the Grade 7-12 lettering font (p712-jacket.js reads it when it first draws; 5 KB)
   ensureStoryFont();
   return Promise.all(SCRIPTS.concat(extraScripts).map(loadScript)).then(function () {
     var w = window;
@@ -376,7 +424,7 @@ function startLoading() {
     if (!going()) { openBackground(); return; }
     window.__p2Step = 4;
     // step 4: three.js (the Grade 3-6 jigsaw has no WebGL and does not need it)
-    try { await (band === "g36" && look === "girl" ? Promise.resolve(true) : loadThree(function () { return 0; }, function () { return started; }, false)); } catch (e) { /* the game waits for it */ }
+    try { await (noThree(band, look) ? Promise.resolve(true) : loadThree(function () { return 0; }, function () { return started; }, false)); } catch (e) { /* the game waits for it */ }
     window.__p2Step = 5;
     openBackground();
     allReady = true;
@@ -393,13 +441,13 @@ function startStory() {
   var scenes = [], ready = [], failed = [], decodeAsked = [];
   var snd = null;
   var finish = function () { if (!over) { over = true; fromStory = true; setPhase("page"); } };
-  var storyName = band === "g36" ? "p36-story" : "p2-story";
+  var storyName = storyIdOf(band);
   function mountStory() {
     var st = stageFor(host.clientWidth || innerWidth, host.clientHeight || innerHeight);
     var t = inst ? inst.tl.time() : 0;
     if (inst) { try { inst.destroy(); } catch (e) { /* gone */ } inst = null; }
-    var content = Object.assign(w.P2Data.toStory(response), { base: BASE, pxScale: st.ps, lazySorter: true, holdPictures: true, band: band }, lookFor(response));
-    scenes = scenesFor(!!content.perfect, st.sw > 1080, content.look === "girl", band);
+    var content = Object.assign(w.P2Data.toStory(response), { base: BASE, pxScale: st.ps, lazySorter: true, holdPictures: true, band: band, childBand: band }, lookFor(response));
+    scenes = scenesFor(!!content.perfect, st.sw > 1080, content.look === "girl", band, content);
     host.style.background = "#10182b";
     inst = holdUnrequested(function () { return w.MotionIgor.mount(host, storyName, { theme: "ais", fit: "contain", size: [st.sw, 1920], content: content }); });
     inst.pause();
@@ -410,7 +458,7 @@ function startStory() {
     var my = ++epoch;
     ready = scenes.map(function (_, i) { return i === 0; });
     var threeReady;
-    if (band === "g36" && content.look === "girl") threeReady = Promise.resolve(true);
+    if (noThree(band, content.look)) threeReady = Promise.resolve(true);
     else {
       var clock = function () { return inst ? inst.tl.time() : 0; };
       threeClock = { storyTime: clock, started: function () { return started; } };
@@ -444,7 +492,9 @@ function startStory() {
         playing: function () { return !!inst && !inst.tl.paused() && inst.tl.timeScale() > 0; },
         rate: function () { return inst ? inst.tl.timeScale() : 1; },
         cues: cues,
-        musicFade: band === "g36" ? [52.5, 55] : undefined   // the music bed is 55 s: Grade 3-6 (58.5 s) fades out over its last 2.5 s
+        // the music bed is 55 s: Grade 3-6 (58.5 s) fades out over its last 2.5 s; Grade 7-9 (about 70 to 95 s) LOOPS it with a 1 s crossfade and fades it out over the first 1.5 s of the last beat (the page is silent)
+        musicFade: band === "p2" ? undefined : isSecondaryBand(band) ? (function () { var bl = w.MotionIgor.registry[storyIdOf(band)].beatsFor(content); var fa = bl[bl.length - 1].at; return [fa, fa + 1.5]; })() : [52.5, 55],
+        musicLoop: isSecondaryBand(band)
       });
     }
   }
@@ -576,7 +626,7 @@ warmStory();   // scripts, Fredoka and the title picture start now, while the da
 fetch("data/" + kid + ".json").then(function (r) { if (!r.ok) throw new Error("data " + r.status); return r.json(); }).then(function (json) {
   response = json;
   band = bandFor(json);
-  extraScripts = band === "g36" ? [lookFor(json).look === "girl" ? "p36-puzzle.js" : "p36-football.js"] : [];
+  extraScripts = band === "g36" ? [lookFor(json).look === "girl" ? "p36-puzzle.js" : "p36-football.js"] : isSecondaryBand(band) ? [SECONDARY_SCRIPT] : [];
   window.__p2test.response = json;
   window.__p2test.band = band;
   setPhase(prefersReducedMotion() ? "page" : "loading");

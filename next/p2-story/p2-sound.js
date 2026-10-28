@@ -11,6 +11,8 @@
  * Igor's picks (23 Oct 2026): swoosh = whoosh at every wipe, bell when the lesson begins, pop = a good piece goes in its hole, thud = absent, clank = late to
  * school, switch = early leave, tap = a counter goes up, a quiet bed under it all; NO footsteps, cheering or clapping. The claw machine sounds (claw-move,
  * claw-grab, toy-drop, toy-slip) play in the girls' claw scene (p2-claw): they are fetched only when the story's cue list has them (snd.run), never for the peg sorter.
+ * Grade 7-12 stories (26 Oct 2026) add nine more under the same rule: hoofbeats, landing, pole, refusal (show jumping), cue, pocket, miss (pool), sting (perfect week), ping (an email from a teacher);
+ * the extra gain of each is in SOUNDS (hoofbeats 0.55 under the approach ... see the table), the existing sounds and volumes are untouched.
  * Levels: the files are levelled in tools/encode-audio.sh (music -21 LUFS, effects about -16 dB RMS with a peak limit), so the effects sit clearly above the bed.
  * The last beat (the report) and the page are silent: cues stop before it and the bed is gone by 52.5 s.
  * Silent switch (iPhone): Web Audio follows the ringer switch, media playback does not. The Tap to play click calls P2Sound.unlockMedia() FIRST (synchronously, in the
@@ -34,15 +36,29 @@ var SOUNDS = {                       // sound name -> file in audio/ (gain = ext
   "claw-grab": { file: "claw-grab.m4a", gain: 0.25 },
   "toy-drop": { file: "toy-drop.m4a", gain: 0.25 },
   "toy-slip": { file: "toy-slip.m4a", gain: 0.25 },
+  // Grade 7-12 (Igor's picks of 26 Oct 2026, src/art/audio/igor-picks-2026-10-26-g712.json; encode-audio-g712.sh): fetched only when the story's cue list has them (CLAW_SOUNDS below: the table of sounds that only some stories use)
+  hoofbeats: { file: "hoofbeats.m4a", gain: 0.55 },        // show jumping (p712-showjump): the gallop under each approach
+  landing: { file: "landing.m4a", gain: 0.9 },              // the horse lands after a jump
+  pole: { file: "pole.m4a", gain: 0.8 },                    // the pole is knocked off the fence
+  refusal: { file: "refusal.m4a", gain: 0.7 },              // the horse snorts and stops at the fence
+  cue: { file: "cue.m4a", gain: 0.8 },                      // pool (p712-pool): the cue hits the ball
+  pocket: { file: "pocket.m4a", gain: 0.8 },                // the ball falls into the pocket
+  miss: { file: "miss.m4a", gain: 1 },                      // the ball bounces off the rail
+  sting: { file: "sting.m4a", gain: 0.8 },                  // the perfect week sting (the teen celebration, scene 7)
+  ping: { file: "ping.m4a", gain: 0.6 },                    // a phone ping for every email from a teacher (family table, scene 8)
   music: { file: "music.m4a", gain: 1 }
 };
 var CUE_SOUND = {                    // story cue name -> sound name; cue names not listed here make no sound (round-start, wrong-hole, round-clear)
   swoosh: "whoosh", bell: "bell", "drop-in": "pop", "tag-absent": "thud", "tag-late": "clank", "tag-early": "switch", "counter-tick": "tap",
   "claw-move": "claw-move", "claw-grab": "claw-grab", "toy-drop": "toy-drop", "toy-slip": "toy-slip",     // the girls' claw machine (p2-claw), only fetched when the story has them
   // Grade 3-6 game beats (24 Oct 2026), existing files only: jigsaw (p36-puzzle) piece-in = pop, piece-miss = thud; football (p36-football) kick = tap, goal = pop, post = clank
-  "piece-in": "pop", "piece-miss": "thud", kick: "tap", goal: "pop", post: "clank"
+  "piece-in": "pop", "piece-miss": "thud", kick: "tap", goal: "pop", post: "clank",
+  // Grade 7-12 (26 Oct 2026): cue name = sound name. Show jumping: hoofbeats, landing, pole, refusal (its tags and counter ticks use the sounds above). Pool: cue, pocket, miss. Scenes 7 and 8: sting, ping.
+  hoofbeats: "hoofbeats", landing: "landing", pole: "pole", refusal: "refusal", cue: "cue", pocket: "pocket", miss: "miss", sting: "sting", ping: "ping"
 };
-var CLAW_SOUNDS = { "claw-move": 1, "claw-grab": 1, "toy-drop": 1, "toy-slip": 1 };
+// sounds that only some stories use: they are fetched (and decoded) only when the story's own cue list has them (snd.run), never for the others (the claw machine, the Grade 7-12 stories)
+var CLAW_SOUNDS = { "claw-move": 1, "claw-grab": 1, "toy-drop": 1, "toy-slip": 1,
+  hoofbeats: 1, landing: 1, pole: 1, refusal: 1, cue: 1, pocket: 1, miss: 1, sting: 1, ping: 1 };
 var MUSIC = { fadeInEnd: 0.8, fadeOutFrom: 50.0, fadeOutTo: 52.5, resync: 2.0 };
 var LOOKAHEAD = 0.5;
 var JUMP = 0.8;                      // a forward step of the story clock bigger than the time that passed by more than this (seconds) is a seek, not time passing                // seconds of story clock: effects are handed to the audio clock this far ahead, so a late timer tick (a busy frame) never delays one
@@ -172,16 +188,40 @@ function create(opts) {
   function stopMusic(fade, t) {
     if (!music) return;
     var m = music; music = null;
-    try {
-      var now = ctx.currentTime;
-      m.gain.gain.cancelScheduledValues(now); m.gain.gain.setValueAtTime(m.gain.gain.value, now); m.gain.gain.linearRampToValueAtTime(0, now + fade);
-      m.src.stop(now + fade + 0.03);
-    } catch (e) { /* already ended */ }
+    var now = ctx.currentTime;
+    (m.segs || [m]).forEach(function (sg) {
+      try {
+        sg.gain.gain.cancelScheduledValues(now); sg.gain.gain.setValueAtTime(sg.gain.gain.value, now); sg.gain.gain.linearRampToValueAtTime(0, now + fade);
+        sg.src.stop(now + fade + 0.03);
+      } catch (e) { /* already ended */ }
+    });
     note({ kind: "music-stop", t: t == null ? null : +t.toFixed(3) });
+  }
+  // LOOPED BED (Grade 7-12 stories, polish round 26 Oct 2026): the bed is XFADE s shorter than its file, so the story clock maps to the file by t mod LOOP, where LOOP = the file's length - XFADE.
+  // Loop k plays the file from 0 at story second k x LOOP; the last XFADE s of loop k fade out while the first XFADE s of loop k + 1 (the same file) fade in: a clean 1 s crossfade
+  // (the story's own musicFade envelope on the bus still sets the level; nothing changes the volume of the bed). clock.musicLoop = true turns it on; P-2 and Grade 3-6 never loop.
+  var XFADE = 1.0;
+  function loopLen(buf) { return Math.max(5, buf.duration - XFADE); }
+  /** one loop segment: file second `pos` plays at audio time `when`; loop k > 0 fades in over XFADE, every segment fades out over the last XFADE of the file */
+  function loopSeg(buf, pos, when, fadeIn) {
+    var src = ctx.createBufferSource(), g = ctx.createGain(), full = SOUNDS.music.gain, endAt = when + (buf.duration - pos);
+    src.buffer = buf; src.connect(g); g.connect(musicBus);
+    if (fadeIn) { g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(full, when + XFADE); } else { g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(full, when + 0.06); }
+    g.gain.setValueAtTime(full, Math.max(when + 0.07, endAt - XFADE)); g.gain.linearRampToValueAtTime(0, endAt);
+    src.start(when, pos); src.stop(endAt + 0.05);
+    return { src: src, gain: g };
   }
   function startMusic(t) {
     var buf = buffers.music;
     if (!buf) return;
+    if (clock && clock.musicLoop) {
+      try {
+        var L = loopLen(buf), k = Math.floor(t / L), pos = t - k * L, now = ctx.currentTime, sg = loopSeg(buf, pos, now, false);
+        music = { segs: [sg], src: sg.src, gain: sg.gain, off: t, at: now, k: k, L: L };
+        note({ kind: "music-start", t: +t.toFixed(3), off: +pos.toFixed(3), loop: k });
+      } catch (e) { music = null; }
+      return;
+    }
     var off = clamp(t, 0, Math.max(0, buf.duration - 0.1));
     try {
       var src = ctx.createBufferSource(), g = ctx.createGain(), now = ctx.currentTime;
@@ -192,6 +232,17 @@ function create(opts) {
       note({ kind: "music-start", t: +t.toFixed(3), off: +off.toFixed(3) });
     } catch (e) { music = null; }
   }
+  /** looped bed: schedule the next loop's segment on the audio clock a few seconds before it starts (a pause or a seek stops them all: stopMusic) */
+  function loopAhead(t) {
+    if (!music || !music.L || !buffers.music) return;
+    var buf = buffers.music, next = music.k + 1, startsAt = next * music.L;            // story second the next loop starts at
+    if (startsAt - t > 3) return;
+    try {
+      var when = music.at + (startsAt - music.off), sg = loopSeg(buf, 0, Math.max(ctx.currentTime, when), true);
+      music.segs.push(sg); music.k = next;
+      note({ kind: "music-loop", t: +t.toFixed(3), loop: next });
+    } catch (e) { /* the bed ends with its file */ }
+  }
   function musicTick(playing, t, jumped) {
     if (!ctx) return;
     var env = envelope(t, clock && clock.musicFade);               // clock.musicFade = [from, to] for a story longer than the 55 s bed (Grade 3-6: 52.5 to 55)
@@ -199,6 +250,7 @@ function create(opts) {
     if (!want) { if (music) stopMusic(0.08, t); return; }
     if (music && (jumped || Math.abs(music.off + (ctx.currentTime - music.at) - t) > MUSIC.resync)) stopMusic(0.05, t);
     if (!music) startMusic(t);
+    if (music && music.L) loopAhead(t);
     try { musicBus.gain.setTargetAtTime(env, ctx.currentTime, 0.04); } catch (e) { /* ignore */ }
   }
 

@@ -15,7 +15,11 @@
  *   Lateness (total days late, punctuality %); the week block with its "Week ending 15 Oct" label (days absent, late to school, early
  *   leave); three charts (Absence, Late to School, Early Leave), each with week / This Term / This Year bars; the data note again at
  *   the bottom. 25/26 follows the page: no week button, no week block, no Term / Week picker, two bars per chart.
- * Left off on purpose (primary does not track them): Late to Class, Bathroom Visits, Clinic Visits, Recognition awards, "More about this year".
+ * Left off on purpose for a PRIMARY child (primary does not track them): Late to Class, Bathroom Visits, Clinic Visits, Recognition awards, "More about this year".
+ * A SECONDARY child (Grade 7-12, 26/27 only; P2Data.toPage(...).byYear["2627"].secondary) gets them as the page shows them, after the three charts: the "More about this year"
+ * chip, three charts (Late to Class, Bathroom Visits, Clinic Visits: the chosen week / This Term / This Year bars, late to class is a COUNT) and the "Recognition awards (N this
+ * year)" card: the chosen week's entries ("Last Week \u00b7 Week ending 15 Oct: 1 award entry"), then all of the year's entries; each entry shows how it was given (Card, Token, Email),
+ * who from, the week ending and the teacher's note in FULL (never cut, never split on commas, Arabic included; dir="auto"). Same numbers and wording as the app, in this page's own look.
  * Never red: a miss is gold, a zero is a green tick.
  *
  * Layout (22 Oct, Igor's points 4 and 6): order is title, 26/27 button + Term / Week picker, data note, then the clock wall as a modest banner (480 px wide at most,
@@ -143,6 +147,20 @@ var CSS = [
   ".p2pg-lbls{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:8px 4px 0}",
   ".p2pg-lbls span{text-align:center;font-weight:600;font-size:14px;line-height:1.15;color:#33415f}",
   ".p2pg-foot{padding-bottom:4px}",
+  // secondary children: "More about this year" (late to class, bathroom, clinic charts + the recognition awards card)
+  ".p2pg-sec{display:flex;flex-direction:column;gap:16px}",
+  ".p2pg-sec:empty{display:none}",
+  ".p2pg-more{align-self:flex-start;display:inline-block;padding:7px 16px;border-radius:999px;background:#fff;border:3px solid " + INK + ";box-shadow:0 4px 0 rgba(16,32,63,.3);font-weight:700;font-size:16px;color:" + INK + "}",
+  ".p2pg-h4{margin:0 0 8px;font-weight:600;font-size:14px;line-height:1.3;color:#33415f}",
+  ".p2pg-awsec{margin-bottom:14px}",
+  ".p2pg-awsec:last-child{margin-bottom:0}",
+  ".p2pg-awlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}",
+  ".p2pg-awitem{padding:11px 13px;border-radius:16px;background:#f4f6fb;border:2px solid #dbe2f0}",
+  ".p2pg-awmeta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;margin-bottom:5px;font-weight:500;font-size:14px;line-height:1.3;color:#44516f}",
+  ".p2pg-awmeta b{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:" + INK + "}",
+  ".p2pg-awmeta svg{width:16px;height:16px;flex:none}",
+  ".p2pg-awnote{margin:0;font-weight:500;font-size:16px;line-height:1.35;color:" + INK + ";white-space:pre-wrap;overflow-wrap:anywhere}",
+  ".p2pg-awnone{margin:0;font-weight:500;font-size:14px;color:#44516f}",
   // scaling (container queries on the page's own width, so the story stage, a phone and a laptop all pick the right layout): 1 column on a phone,
   // 2 on a tablet, the summary cards and the charts 3 in a row on a laptop (as the app's md:grid-cols-3), content never wider than 1200 px
   "@container p2pg (min-width:500px){.p2pg-art{-webkit-mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent)}}",
@@ -213,7 +231,8 @@ function mount(el, response, opts) {
     '<div class="p2pg-kpis" data-w="kpis"></div>' +
     '<div class="p2pg-rise" data-r="1.25" data-w="week"></div>' +
     '<div class="p2pg-charts" data-w="charts"></div>' +
-    '<div class="p2pg-rise p2pg-foot" data-r="1.95" data-w="note2"></div>' +
+    '<div class="p2pg-sec" data-w="sec"></div>' +
+    '<div class="p2pg-rise p2pg-foot" data-r="2.2" data-w="note2"></div>' +
     '</div></div>';
   var page = el.firstChild;
   // the wide wall picture loads only once the page is 700 px wide or more (a phone never fetches it); its path is the page's own wall path with the last
@@ -235,7 +254,7 @@ function mount(el, response, opts) {
     checkWide();
   };
   function W(name) { return page.querySelector('[data-w="' + name + '"]'); }
-  var wrap = { head: W("head"), years: W("years"), note: W("note"), child: W("child"), kpis: W("kpis"), week: W("week"), charts: W("charts"), note2: W("note2") };
+  var wrap = { head: W("head"), years: W("years"), note: W("note"), child: W("child"), kpis: W("kpis"), week: W("week"), charts: W("charts"), sec: W("sec"), note2: W("note2") };
 
   function Y() { return model.byYear[state.year].atWeek(state.week); }
   function drop(sec) { items = items.filter(function (it) { return it.sec !== sec; }); }
@@ -361,35 +380,70 @@ function mount(el, response, opts) {
     bind(wrap.week, "week", base(1.25 + 0.3));
   }
 
-  function buildCharts() {
-    var y = Y();
-    var defs = [["absence", "Absence", "abs"], ["late", "Late to School", "late"], ["early", "Early Leave", "early"]];
+  /** One row of bar-chart cards: defs = [[key, title], ...], data[key] = { week, term, year }; first = the card's entrance start (s). Returns the html. */
+  function chartCards(y, defs, data, first) {
     var cols = [["term", "This Term", GOLD], ["year", "This Year", "#3b4d7a"]];
     if (y.weekLabel != null) cols.unshift(["week", y.weekLabel, BLUE]);            // 25/26 has no week bar
     var grid = "grid-template-columns:repeat(" + cols.length + ",1fr)";
-    var allFlat = defs.every(function (d) { var c = y.charts[d[0]]; return Math.max.apply(null, cols.map(function (k) { return c[k[0]]; })) === 0; });   // flat style only when every chart is flat, so cards in one row share a baseline
-    wrap.charts.innerHTML = defs.map(function (d, i) {
-      var c = y.charts[d[0]], max = Math.max.apply(null, cols.map(function (k) { return c[k[0]]; }));
+    var allFlat = defs.every(function (d) { var c = data[d[0]]; return Math.max.apply(null, cols.map(function (k) { return c[k[0]]; })) === 0; });   // flat style only when every chart is flat, so cards in one row share a baseline
+    return defs.map(function (d, i) {
+      var c = data[d[0]], max = Math.max.apply(null, cols.map(function (k) { return c[k[0]]; }));
       var bars = cols.map(function (k) {
         var v = c[k[0]], h = v === 0 ? 6 : Math.max(14, Math.round(v / max * 118));
         return '<div class="p2pg-bcol"><span class="p2pg-bv ' + (v === 0 ? "is-zero" : "") + '" data-m="ch-' + d[0] + "-" + k[0] + '" data-v="' + v + '">' + v + "</span>" +
           '<i class="p2pg-bar ' + (v === 0 ? "is-zero" : "") + '" data-bar="' + h + '" data-val="' + v + '" style="height:' + h + "px;background:" + k[2] + '"></i></div>';
       }).join("");
       var lbls = cols.map(function (k) { return "<span>" + esc(k[1]) + "</span>"; }).join("");
-      return '<section class="p2pg-card p2pg-rise" data-r="' + (1.45 + i * 0.15) + '" data-testid="chart-' + d[0] + '"><h3 class="p2pg-h3">' + d[1] + '</h3><div class="p2pg-bars' + (allFlat ? " is-flat" : "") + '" style="' + grid + '">' + bars + '</div><div class="p2pg-lbls" style="' + grid + '">' + lbls + "</div></section>";
+      return '<section class="p2pg-card p2pg-rise" data-r="' + (first + i * 0.15) + '" data-testid="chart-' + d[0] + '"><h3 class="p2pg-h3">' + d[1] + '</h3><div class="p2pg-bars' + (allFlat ? " is-flat" : "") + '" style="' + grid + '">' + bars + '</div><div class="p2pg-lbls" style="' + grid + '">' + lbls + "</div></section>";
     }).join("");
-    drop("charts");
-    [].forEach.call(wrap.charts.querySelectorAll("[data-r]"), function (card) {
+  }
+  /** The bars of every card under `scope` grow (and their numbers count up) with the entrance, section `sec`. */
+  function bindBars(scope, sec) {
+    [].forEach.call(scope.querySelectorAll("[data-r]"), function (card) {
       var b = base(parseFloat(card.getAttribute("data-r")) + 0.3), n = 0;
       [].forEach.call(card.querySelectorAll(".p2pg-bar"), function (bar) {
         var h = Number(bar.getAttribute("data-bar")), val = Number(bar.getAttribute("data-val")), lab = bar.previousSibling;
-        items.push({ sec: "charts", s: b + 0.08 * n++, d: 0.9, set: function (f) { bar.style.height = Math.max(0, h * f).toFixed(1) + "px"; lab.textContent = String(Math.round(val * f)); } });
+        items.push({ sec: sec, s: b + 0.08 * n++, d: 0.9, set: function (f) { bar.style.height = Math.max(0, h * f).toFixed(1) + "px"; lab.textContent = String(Math.round(val * f)); } });
       });
     });
+  }
+  function buildCharts() {
+    var y = Y();
+    var defs = [["absence", "Absence", "abs"], ["late", "Late to School", "late"], ["early", "Early Leave", "early"]];
+    wrap.charts.innerHTML = chartCards(y, defs, y.charts, 1.45);
+    drop("charts");
+    bindBars(wrap.charts, "charts");
     if (mode !== "entrance") [].forEach.call(wrap.charts.querySelectorAll(".p2pg-rise"), function (c) { c.classList.remove("p2pg-rise"); });
   }
 
-  function buildAll() { buildHead(); buildControls(); buildNotes(); buildChild(); buildKpis(); buildWeek(); buildCharts(); }
+  // 26/27, secondary children only: the page's "More about this year". The three class charts, then the recognition awards (every entry in full).
+  var MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="6" fill="' + GOLD + '" stroke="' + INK + '" stroke-width="2"/><path d="M8.5 14.2 7 21l5-2.6 5 2.6-1.5-6.8" fill="#fff" stroke="' + INK + '" stroke-width="2" stroke-linejoin="round"/></svg>';
+  function awardList(list, emptyText) {
+    if (!list.length) return '<p class="p2pg-awnone">' + esc(emptyText) + "</p>";
+    return '<ul class="p2pg-awlist" data-testid="award-list">' + list.map(function (a) {
+      return '<li class="p2pg-awitem"><div class="p2pg-awmeta"><b>' + MEDAL + esc(a.category || "Award") + "</b>" + (a.teacher ? "<span>from " + esc(a.teacher) + "</span>" : "") +
+        "<span>week ending " + esc(longDate(a.weekEnding)) + "</span>" + ((a.count == null ? 1 : a.count) > 1 ? '<span data-testid="award-count">' + esc(a.count) + " awards this week, notes shown together</span>" : "") + "</div>" +
+        (a.note ? '<p class="p2pg-awnote" dir="auto">' + esc(a.note) + "</p>" : "") + "</li>";
+    }).join("") + "</ul>";
+  }
+  function buildSecondary() {
+    var y = Y(), sc = y.secondary;
+    drop("sec");
+    if (!sc) { wrap.sec.innerHTML = ""; wrap.sec.removeAttribute("data-testid"); return; }
+    wrap.sec.setAttribute("data-testid", "secondary-measures");                  // the page's own test id for the whole block
+    var defs = sc.order.map(function (k) { return [k, sc.titles[k]]; });
+    var wa = sc.weekAwards.length;
+    wrap.sec.innerHTML = '<span class="p2pg-more p2pg-rise" data-r="1.5" data-testid="more-about-year">' + esc(sc.heading) + "</span>" +
+      '<div class="p2pg-charts" data-testid="secondary-charts">' + chartCards(y, defs, sc.charts, 1.6) + "</div>" +
+      '<section class="p2pg-card p2pg-rise" data-r="2.05" data-testid="awards-card"><h3 class="p2pg-h3">Recognition awards (<span data-m="aw-year" data-v="' + sc.awardsYear + '">' + sc.awardsYear + "</span> this year)</h3>" +
+      (sc.weekHeading != null ? '<div class="p2pg-awsec" data-testid="week-awards"><h4 class="p2pg-h4">' + esc(sc.weekHeading) + ": " + wa + " " + (wa === 1 ? "award entry" : "award entries") + "</h4>" +
+        awardList(sc.weekAwards, "No recognition awards recorded in this week.") + "</div>" : "") +
+      '<div class="p2pg-awsec"><h4 class="p2pg-h4">All awards this year</h4>' + awardList(sc.allAwards, "No recognition awards recorded this year.") + "</div></section>";
+    bindBars(wrap.sec, "sec");
+    if (mode !== "entrance") [].forEach.call(wrap.sec.querySelectorAll(".p2pg-rise"), function (c) { c.classList.remove("p2pg-rise"); });
+  }
+
+  function buildAll() { buildHead(); buildControls(); buildNotes(); buildChild(); buildKpis(); buildWeek(); buildCharts(); buildSecondary(); }
 
   // ------------------------------------------------------------------------------ painting
   function riseEls() { return page.querySelectorAll(".p2pg-rise[data-r]"); }
@@ -435,9 +489,9 @@ function mount(el, response, opts) {
 
   // ------------------------------------------------------------------------------ interaction
   function rebuildAfterChange(full) {
-    if (full) { buildControls(); buildNotes(); buildChild(); buildKpis(); buildWeek(); buildCharts(); }
+    if (full) { buildControls(); buildNotes(); buildChild(); buildKpis(); buildWeek(); buildCharts(); buildSecondary(); }
     else { buildChild(); buildKpis(); }
-    if (mode === "final") runLive(full ? ["kpis", "week", "charts"] : ["kpis"]);
+    if (mode === "final") runLive(full ? ["kpis", "week", "charts", "sec"] : ["kpis"]);
     else paintEntrance(lastT);
   }
   function setYear(k) {
@@ -457,8 +511,8 @@ function mount(el, response, opts) {
     if (next === state.week) { if (sel) sel.value = w; return; }
     state.week = next;
     if (sel) sel.value = w;                                          // the drop-down itself is never rebuilt while it is in use
-    buildChild(); buildWeek(); buildCharts();
-    if (mode === "final") runLive(["week", "charts"]);
+    buildChild(); buildWeek(); buildCharts(); buildSecondary();
+    if (mode === "final") runLive(["week", "charts", "sec"]);
     else paintEntrance(lastT);
   }
   function setView(v) {
