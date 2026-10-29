@@ -20,7 +20,7 @@
 (function () {
 // beats in play order with their start second (b.at). 100% = the parent page's hasPerfectWeek: the class party; otherwise the results card. Exactly one of the two plays, so the story is the same length either way.
 function beatList(perfect, look, band, c) {
-  if (band === "g79") return girl79List(perfect, c);
+  if (band === "g79") return look === "girl" ? girl79List(perfect, c) : boy79List(perfect, c);   // 29 Oct 2026: the Grade 7-9 boy has the girl's story with the Grade 3-6 football as the game (boy79List below)
   if (band === "g1012") return secondaryList(perfect, look, band, c);
   var g36 = band === "g36";                                           // Grade 3-6: the game scene is 18 s (three rounds of 6 s): jigsaw for girls, football for boys; everything after it starts 4 s later
   var list = [
@@ -62,7 +62,7 @@ function secondaryList(perfect, look, band, c) {
 // Grade 7-9 girl (g79), rebuilt 27 Oct 2026 to P-2 quality (Igor's list): the P-2 storybook title (no student), longer scenes, the classroom ON TIME or LATE (orange crosses),
 // the bathroom pass and the clinic as two scenes (6 s each, 4 s at 0 visits), the family email loop (about 7 s per email, up to 5). Girl-only modules p79-*; show jumping, the results card
 // and the final page are reused. Bathroom, clinic and family are DATA DRIVEN (P79Bathroom / P79Clinic / P79Family .duration(content)).
-function girl79List(perfect, c) {
+function girl79List(perfect, c, game) {
   c = c || {};
   var has = !!c.secondary;
   function d(mod, fallback) { return window[mod] && has ? window[mod].duration(c) : fallback; }
@@ -71,7 +71,7 @@ function girl79List(perfect, c) {
     { id: "p79-walk", dur: 4, art: "walk-layers/" },                     // 28 Oct 2026 (Igor's storyboard notes): walk 4 s, friends 4 s, ONE classroom scene 5 s / 12 s,
     { id: "p79-friends", dur: 4, art: "friends-layers/" },               // continuous show jumping (p79-showjump), results and celebration 4 s
     { id: "p79-class", dur: d("P79Class", 5), art: "classroom-layers/" },
-    { id: "p79-showjump", dur: 18, art: "showjump-layers/" },
+    game === "football" ? { id: "p36-football", dur: 18, art: "football-layers/" } : { id: "p79-showjump", dur: 18, art: "showjump-layers/" },   // the Grade 7-9 BOY (art boy79) plays the football: the only difference to the girl's story
     { id: "p79-bathroom", dur: d("P79Bathroom", 4), art: "bathroom-layers/" },
     { id: "p79-clinic", dur: d("P79Clinic", 4), art: "clinic-layers/" },
     perfect ? { id: "p79-celebrate", dur: 4, art: "celebrate-layers/" } : { id: "p79-results", dur: 2, art: "results-layers/" },
@@ -81,6 +81,8 @@ function girl79List(perfect, c) {
   ].filter(Boolean);
   return place(list);
 }
+// Grade 7-9 BOY (band g79, art boy79, 29 Oct 2026): the girl's story, every scene and timing, with the Grade 3-6 football (p36-football, art boy79/football-layers/, 18 s) instead of the show jumping.
+function boy79List(perfect, c) { return girl79List(perfect, c, "football"); }
 var SPEED = 3, WIPE = 1.4 / SPEED, COVER = 0.7 / SPEED;
 // Sound cues of the whole story: [{ t, name, beat }] in story seconds (the sound layer, p2-sound.js, plays them off the story clock).
 //   swoosh        at the start of every scene-change wipe (the beat underneath swaps COVER s later)
