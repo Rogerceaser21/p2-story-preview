@@ -99,7 +99,7 @@ window.P2Kid = {
     // (P712.built(content) is false for the fallbacks), so the secondary story must not be mounted for them until their art is built.
     var kid = (c.look === "girl" ? "girl" : "boy") + (c.band === "g36" ? "36" : "");
     if (c.band === "g79") kid = c.look === "girl" ? "girl79" : "boy79";     // 29 Oct 2026: the Grade 7-9 boy has his own art (boy79), it no longer falls back to boy36
-    else if (c.band === "g1012") kid = c.look === "girl" ? "girl1012" : "boy12";     // 30 Oct 2026: the Grade 10-12 girl has her own art (girl1012), it no longer falls back to girl36; the Grade 12 boy has boy12 (30 Oct 2026, replaces boy1012)
+    else if (c.band === "g1012") kid = c.look === "girl" ? (c.grade12 ? "girl12" : "girl1012") : "boy12";     // 31 Oct 2026: a Grade 12 girl (content.grade12 true) has her own art (girl12); a Grade 10-11 girl stays girl1012. 30 Oct 2026: the Grade 10-12 girl has her own art (girl1012), it no longer falls back to girl36; the Grade 12 boy has boy12 (30 Oct 2026, replaces boy1012)
     else if (c.band === "g1011") kid = c.look === "girl" ? "girl1012" : "boy1011";     // 30 Oct 2026: the Grade 10-11 boy (band g1011, table tennis) has his own art (boy1011); Grade 12 boys stay g1012 + boy12, Grade 10-12 girls g1012 + girl1012
     return on ? String(art).replace(/([^\/]*\/)$/, kid + "/$1") : art;
   }
