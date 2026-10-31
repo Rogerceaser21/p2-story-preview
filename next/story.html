@@ -75,7 +75,7 @@
 var T0 = performance.now();   // the loader is in the page's own HTML, so this is its first paint
 
 // ---- which child ----
-var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100", "g36-girl-100", "g36-girl-not100", "g36-boy-100", "g36-boy-not100", "g79-girl-100", "g79-girl-not100", "g79-boy-100", "g79-boy-not100", "g1011-boy-100", "g1011-boy-not100"];
+var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100", "g36-girl-100", "g36-girl-not100", "g36-boy-100", "g36-boy-not100", "g79-girl-100", "g79-girl-not100", "g79-boy-100", "g79-boy-not100", "g1011-girl-100", "g1011-girl-not100", "g1011-boy-100", "g1011-boy-not100"];
 var kid = new URLSearchParams(location.search).get("kid");
 if (KIDS.indexOf(kid) < 0) { location.replace("./"); return; }
 
@@ -106,13 +106,17 @@ function isG1011Grade(grade) {
   var g = String(grade == null ? "" : grade).trim().toLowerCase().replace(/\s+/g, " ");
   return ["grade 10", "grade 11"].indexOf(g) >= 0;
 }
-function bandFor(resp) {   // as storyBandFor in p2-data.js: a Grade 10 or 11 BOY (gender not F) plays "g1011" (table tennis, art boy1011)
+function isG1012Grade(grade) {
+  var g = String(grade == null ? "" : grade).trim().toLowerCase().replace(/\s+/g, " ");
+  return ["grade 10", "grade 11", "grade 12"].indexOf(g) >= 0;
+}
+function bandFor(resp) {   // as storyBandFor in p2-data.js: a Grade 10 or 11 BOY (gender not F) plays "g1011" (table tennis, art boy1011); a Grade 10-12 GIRL plays "g1012" (the Grade 7-9 girl's story, art girl1012)
   var s = resp && resp.years && resp.years["2627"];
   var grade = (s && s.grade) || (resp && resp.student && resp.student.grade);
-  return isG79Grade(grade) ? "g79" : (isG1011Grade(grade) && lookFor(resp).look !== "girl") ? "g1011" : isG36Grade(grade) ? "g36" : "p2";
+  return isG79Grade(grade) ? "g79" : (isG1011Grade(grade) && lookFor(resp).look !== "girl") ? "g1011" : isG1012Grade(grade) ? "g1012" : isG36Grade(grade) ? "g36" : "p2";
 }
-var storyIdOf = function (b) { return b === "g36" ? "p36-story" : b === "g79" ? "g79-story" : b === "g1011" ? "g1011-story" : "p2-story"; };
-var isSecondaryBand = function (b) { return b === "g79" || b === "g1011"; };   // g1011 = the Grade 10-11 BOY (art boy1011, table tennis); the Grade 12 boy is not on this site
+var storyIdOf = function (b) { return b === "g36" ? "p36-story" : b === "g79" ? "g79-story" : b === "g1011" ? "g1011-story" : b === "g1012" ? "g1012-story" : "p2-story"; };
+var isSecondaryBand = function (b) { return b === "g79" || b === "g1011" || b === "g1012"; };   // g1011 = the Grade 10-11 BOY (art boy1011, table tennis); g1012 = the Grade 10-11 GIRL (art girl1012); the Grade 12 boy is not on this site
 var noThree = function (b, look) { return (isSecondaryBand(b) && !(b === "g79" && look !== "girl")) || (b === "g36" && look === "girl"); };   // show jumping is plain DOM: no WebGL, no three.js; the Grade 7-9 BOY plays the 3D football and needs it
 function stageFor(vw, vh) {
   var aspect = vw / Math.max(1, vh);
@@ -132,7 +136,7 @@ var FOOTBALL_FILES = ["bg.jpg", "kicker-ready.webp", "kicker-strike.webp", "kick
 var SHOWJUMP_FIGS = ["canter", "clear", "finish", "finishplain", "knocked", "landing", "refusal", "runout", "takeoff"].map(function (n) { return "fig-" + n + ".webp"; });
 var G79_FOOTBALL = ["bg.jpg", "kicker-ready.webp", "kicker-strike.webp", "kicker-follow.webp", "keeper-ready.webp", "keeper-dive-bl.webp", "keeper-dive-br.webp", "keeper-dive-tl.webp", "keeper-dive-tr.webp"];   // same list as FOOTBALL_FILES, kept inside this block so tools/g79-files.mjs can run it alone
 function g79FilesOf(id, wide, sec, base, girl, folder) {
-  var kid = folder || (girl === false ? "boy79" : "girl79");   // folder = "boy1011" for the Grade 10-11 boy (the Grade 7-9 boy's scenes with the table tennis)
+  var kid = folder || (girl === false ? "boy79" : "girl79");   // folder = "boy1011" for the Grade 10-11 boy (the Grade 7-9 boy's scenes with the table tennis), "girl1012" for the Grade 10-11 girl (the Grade 7-9 girl's scenes)
   sec = sec || {};
   var late = (sec.lateToClass || 0) > 0, bath = sec.bathroom || 0, clinic = sec.clinic || 0;
   var kp = function (dir, files) { return files.map(function (f) { return base + kid + "/" + dir + "-layers/" + f; }); };
@@ -164,12 +168,12 @@ function g79FilesOf(id, wide, sec, base, girl, folder) {
 // ---- G79 FILES END ----
 function g79Scenes(wide, content, girl, band) {
   var sec = content && content.secondary || {};
-  var folder = band === "g1011" ? "boy1011" : undefined;
-  var beats = content && window.MotionIgor ? window.MotionIgor.registry[band === "g1011" ? "g1011-story" : "g79-story"].beatsFor(content) : ["p2-title", "p79-walk", "p79-friends"].map(function (id) { return { id: id, at: 0 }; });
+  var folder = band === "g1011" ? "boy1011" : band === "g1012" ? "girl1012" : undefined;
+  var beats = content && window.MotionIgor ? window.MotionIgor.registry[storyIdOf(band)].beatsFor(content) : ["p2-title", "p79-walk", "p79-friends"].map(function (id) { return { id: id, at: 0 }; });
   return beats.map(function (b) { return { start: b.at, files: g79FilesOf(b.id, wide, sec, BASE, girl, folder) }; });
 }
 function scenesFor(perfect, wide, girl, band, content) {
-  if (band === "g79" || band === "g1011") return g79Scenes(wide, content, girl, band);
+  if (band === "g79" || band === "g1011" || band === "g1012") return g79Scenes(wide, content, girl, band);
   var g36 = band === "g36";
   var k = (girl ? "girl" : "boy") + (g36 ? "36" : "");
   var kp = function (dir, files) { return files.map(function (f) { return BASE + k + "/" + dir + "-layers/" + f; }); };
