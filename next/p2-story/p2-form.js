@@ -94,12 +94,13 @@ window.P2Kid = {
   art: function (c, art) {
     var on = c.kidArt !== undefined ? !!c.kidArt : (window.P2_KID_ART !== undefined ? !!window.P2_KID_ART : (P2Kid.ON && !/[?&]kidart=0\b/.test(location.search)));
     // Grade 3-6 (content.band "g36"): the same folders with a 36 on them (girl36 = Noor's art, boy36 = the Grade 3-6 boy), see rebuild-serve.sh
-    // Secondary (26 Oct 2026): band "g79" + girl = girl79 (the Grade 8 girl), band "g79" + boy = boy79 (29 Oct 2026), band "g1012" + boy = boy1012 (the Grade 12 boy). Only g1012 + girl has no art yet and falls back
-    // to the Grade 3-6 folders of the same look (g1012 girl -> girl36; the g79 boy no longer falls back, he has boy79): the shared P-2 pieces keep working, but the secondary scenes (p712-*) need the exact folder
+    // Secondary (26 Oct 2026): band "g79" + girl = girl79 (the Grade 8 girl), band "g79" + boy = boy79 (29 Oct 2026), band "g1012" + boy = boy1012 (the Grade 12 boy), band "g1012" + girl = girl1012 (30 Oct 2026). Every Grade 7-12 combination has its own art now;
+    // the shared P-2 pieces keep working, and the secondary scenes (p712-* / p79-*) need the exact folder
     // (P712.built(content) is false for the fallbacks), so the secondary story must not be mounted for them until their art is built.
     var kid = (c.look === "girl" ? "girl" : "boy") + (c.band === "g36" ? "36" : "");
     if (c.band === "g79") kid = c.look === "girl" ? "girl79" : "boy79";     // 29 Oct 2026: the Grade 7-9 boy has his own art (boy79), it no longer falls back to boy36
-    else if (c.band === "g1012") kid = c.look === "girl" ? "girl36" : "boy1012";
+    else if (c.band === "g1012") kid = c.look === "girl" ? "girl1012" : "boy12";     // 30 Oct 2026: the Grade 10-12 girl has her own art (girl1012), it no longer falls back to girl36; the Grade 12 boy has boy12 (30 Oct 2026, replaces boy1012)
+    else if (c.band === "g1011") kid = c.look === "girl" ? "girl1012" : "boy1011";     // 30 Oct 2026: the Grade 10-11 boy (band g1011, table tennis) has his own art (boy1011); Grade 12 boys stay g1012 + boy12, Grade 10-12 girls g1012 + girl1012
     return on ? String(art).replace(/([^\/]*\/)$/, kid + "/$1") : art;
   }
 };

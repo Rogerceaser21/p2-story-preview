@@ -168,6 +168,12 @@ function isG1012(grade) { return g1012Band(grade) !== null; }
 function storyGrade(grade) { return isP2(grade) || isG36(grade) || isG79(grade) || isG1012(grade); }
 /** storyBand(grade) -> "p2" | "g36" | "g79" | "g1012" | null: which story band the grade plays. */
 function storyBand(grade) { return isP2(grade) ? "p2" : isG36(grade) ? "g36" : isG79(grade) ? "g79" : isG1012(grade) ? "g1012" : null; }
+/** storyBandFor(grade, gender) -> storyBand(grade), except a Grade 10 or Grade 11 BOY (gender not "F") plays his own story: "g1011" (30 Oct 2026, table tennis, art boy1011).
+ *  Grade 12 boys and every girl keep "g1012". toStory().band stays the grade's band; the app asks this function for the story that plays. */
+function storyBandFor(grade, gender) {
+  var b = storyBand(grade), g = g1012Band(grade);
+  return b === "g1012" && (g === "Grade 10" || g === "Grade 11") && String(gender == null ? "" : gender).trim().toUpperCase() !== "F" ? "g1011" : b;
+}
 
 /** isSecondaryStudent(student): copied from src/lib/attendance.ts. The 26/27 parent page shows late to class, bathroom, clinic and the awards for these children only. */
 function isSecondaryStudent(s) {
@@ -397,7 +403,7 @@ function toPage(input) {
 }
 
 var API = { toStory: toStory, toPage: toPage, hasPerfectWeek: hasPerfectWeek, attendancePercent: attendancePercent, punctualityPercent: punctualityPercent, weekNumberOf: weekNumberOf,
-  weekEndingText: weekEndingText, weekOptionLabel: weekOptionLabel, groupWeeksByTerm: groupWeeksByTerm, newestWeekEnding: newestWeekEnding, weekHeading: weekHeading, periodForWeek: periodForWeek, studentForWeek: studentForWeek, band: band, isP2: isP2, g36Band: g36Band, isG36: isG36, storyGrade: storyGrade, storyBand: storyBand, G36_BANDS: G36_BANDS, g79Band: g79Band, isG79: isG79, G79_BANDS: G79_BANDS, g1012Band: g1012Band, isG1012: isG1012, G1012_BANDS: G1012_BANDS, isSecondaryStudent: isSecondaryStudent, P2_BANDS: P2_BANDS, P2_BAND_STORED: P2_BAND_STORED };
+  weekEndingText: weekEndingText, weekOptionLabel: weekOptionLabel, groupWeeksByTerm: groupWeeksByTerm, newestWeekEnding: newestWeekEnding, weekHeading: weekHeading, periodForWeek: periodForWeek, studentForWeek: studentForWeek, band: band, isP2: isP2, g36Band: g36Band, isG36: isG36, storyGrade: storyGrade, storyBand: storyBand, storyBandFor: storyBandFor, G36_BANDS: G36_BANDS, g79Band: g79Band, isG79: isG79, G79_BANDS: G79_BANDS, g1012Band: g1012Band, isG1012: isG1012, G1012_BANDS: G1012_BANDS, isSecondaryStudent: isSecondaryStudent, P2_BANDS: P2_BANDS, P2_BAND_STORED: P2_BAND_STORED };
 root.P2Data = API;
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 })(typeof window !== "undefined" ? window : globalThis);
