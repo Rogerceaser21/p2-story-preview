@@ -6,12 +6,13 @@
  * on screen the whole time (each beat runs with chrome: false); the badge and week pill pop in when the title card ends
  * (the title has its own big week pill) and the week pill fades out on the final card. Beats: title 4.5 s, walk 6 s, gate 8 s,
  * classroom 6 s, shape sorter 14 s (three rounds of 4.6 s: came to school, on time, stayed all day), then the party (100% week) OR the results card (6 s), family 6 s, final card 4 s.
- * The walk to school (6 s: mum and Noor from behind up the school path) plays between the title and the gate, so the gate and
+ * The walk to school (6 s: mum and Maryam from behind up the school path) plays between the title and the gate, so the gate and
  * everything after it start 6 s later. The three-round sorter (14 s, was 7 s) makes the story 54.5 s in all.
  * Needs swoosh-wipe.js from the kit loaded alongside the beats.
  * 30 Oct 2026: the Grade 10-11 boy (band g1011, module g1011-story, art boy1011) plays boy1011List = the Grade 7-9 boy's scenes (girl79List) with the table tennis (p1011-tabletennis, 24 s) as the game; Grade 12 boys stay g1012 + boy12, every girl g1012 + girl1012.
  * 30 Oct 2026: the Grade 12 boy (g1012 + boy) plays boy12List = the Grade 7-9 boy's scenes (girl79List) on his own pictures (art boy12) with the pool (p712-pool, 18 s) as the game; secondaryList below is no longer used.
  * 31 Oct 2026: the Grade 12 GIRL (g1012 + girl + content.grade12) plays girl12List = the Grade 10-11 girl's scenes (girl79List) on her own pictures (art girl12) with the pool (p712-pool, 18 s) as the game; the Grade 10-11 girl keeps girl79List with show jumping (art girl1012).
+ * 1 Nov 2026 (Igor): ORDER of the Grade 7-12 list (girl79List, all six characters): title, walk, friends, GAME (absence + late to school + early leave), LATE TO CLASS (p79-class, 5 s never late / 12 s with the count), bathroom, clinic, then the party (100%) or the results card + closing message (not 100%), family, final. The class scene moved from before the game to after it; scene lengths are unchanged.
  * Secondary (Grade 7-12, 26 Oct 2026, Phase 5): modules g79-story (Grade 7-9 girl: show jumping, art girl79) and g1012-story (Grade 10-12 boy: pool, art boy1012). Beats: p712-title 4.5, p712-walk 6,
  * p712-friends 8, p712-class 6, the game 18, p712-around (3 or 6, P712Around.duration), p2-results OR p712-celebrate 6, p712-family (P712Family.duration, data driven), p2-final 4. The length
  * is DATA DRIVEN (about 66 to 95 s): build() sets the instance length from the beat list, MotionIgor.registry[id].beatsFor(content) gives the list (the app uses it for its picture loading).
@@ -74,12 +75,12 @@ function girl79List(perfect, c, game) {
     { id: "p2-title", dur: 4.5, art: "title-layers/" },
     { id: "p79-walk", dur: 4, art: "walk-layers/" },                     // 28 Oct 2026 (Igor's storyboard notes): walk 4 s, friends 4 s, ONE classroom scene 5 s / 12 s,
     { id: "p79-friends", dur: 4, art: "friends-layers/" },               // continuous show jumping (p79-showjump), results and celebration 4 s
-    { id: "p79-class", dur: d("P79Class", 5), art: "classroom-layers/" },
     game === "football" ? { id: "p36-football", dur: 18, art: "football-layers/" } : game === "pool" ? { id: "p712-pool", dur: 18, art: "pool-layers/" } : game === "tabletennis" ? { id: "p1011-tabletennis", dur: 24, art: "tabletennis-layers/" } : { id: "p79-showjump", dur: 18, art: "showjump-layers/" },   // the Grade 7-9 BOY (art boy79) plays the football: the only difference to the girl's story
+    { id: "p79-class", dur: d("P79Class", 5), art: "classroom-layers/" },
     { id: "p79-bathroom", dur: d("P79Bathroom", 4), art: "bathroom-layers/" },
     { id: "p79-clinic", dur: d("P79Clinic", 4), art: "clinic-layers/" },
     perfect ? { id: "p79-celebrate", dur: 4, art: "celebrate-layers/" } : { id: "p79-results", dur: 2, art: "results-layers/" },
-    perfect ? null : { id: "p79-reward", dur: 3, art: "results-layers/" },          // round 3 (28 Oct 2026): results card 2 s, then a gold star reward for a not-100% week
+    perfect ? null : { id: "p79-reward", dur: 3, art: "results-layers/" },          // round 3 (28 Oct 2026): results card 2 s, then the closing message for a not-100% week (1 Nov 2026: no medal any more; "Next week is a fresh start" or "A teacher recognised you this week")
     { id: "p79-family", dur: d("P79Family", 7), art: "family-layers/" },
     { id: "p2-final", dur: 4, art: "final-layers/" }
   ].filter(Boolean);
@@ -140,7 +141,7 @@ MotionIgor.define({
     pxScale: 0,                        // css px of the screen per stage px (set by the app for the last beat); 0 = the old phone size
     badge: "Weekly report",
     episode: "Week 7",
-    child: { name: "Noor", grade: "Grade 0", form: "PREP A" },
+    child: { name: "Maryam", grade: "Grade 0", form: "PREP A" },
     // the child's numbers: what P2Data.toStory(response) gives for the app's response (lastWeek / term / year are the
     // parent page's period totals plus the numbers it works out from them). Default = sample-100 (a 100% week).
     weekEnding: "2026-10-15",

@@ -1,9 +1,11 @@
 /* Grade 3-6 boys' football beat · p36-football  (3D living storybook, real 3D ball, THREE ROUNDS; the boys' version of p2-sorter / p2-claw)
  * Same data, same rounds, same counters and gold tags as the P-2 sorter, told as penalty kicks at a school goal:
  *   Round 1 "Came to school"  : a day ABSENT is a miss (gold tag Absent).
- *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (gold tag Late to school). An absent day plays exactly as in round 1 (same miss, tag Absent).
- *   Round 3 "Stayed all day"  : a day he LEFT EARLY is a miss (gold tag Early leave); absent days miss again with the tag Absent.
- *   Order inside a round: days that went well first, then the round's own misses (late / early), then the absent misses LAST.
+ *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (gold tag Late to school). An absent day plays like a good day here (goal, no tag).
+ *   Round 3 "Stayed all day"  : a day he LEFT EARLY is a miss (gold tag Early leave); an absent day plays like a good day here too.
+ *   ONE REAL EVENT = ONE MISSING PIECE (Igor, 1 Nov 2026; replaces the 23 Oct absent-in-all-rounds): an absence misses in ROUND 1 ONLY; rounds 2 and 3 miss only for late to school / early leave, and an absent day plays like a good day there (no miss, no tag).
+ *   Order inside a round: days that went well first, then the round's misses LAST.
+ *   NOT AT SCHOOL AT ALL (days open minus absent = 0): rows 2 and 3 stay whole (the rule), but nothing is celebrated: the Late / Early zero cards stay grey (no green, no star burst, no clean-round sparkle). A child present 1 or more days is unchanged.
  * One kick per school day open (at most four) at the SAME corner order every round: day 1 bottom left, day 2 top left, day 3 top right, day 4 bottom right.
  *   GOOD day  : the ball flies on a curve into that corner, the goalkeeper throws himself the same way and is too late, the net bulges and shivers, sparkles.
  *   MISSED day: the ball hits the post (bottom corners) or the crossbar (top corners) next to that corner and bounces out (no goal); the post / bar shakes a
@@ -12,7 +14,7 @@
  *   (every day absent) the number just ticks on its card.
  * Between rounds a clean reset (the ball pops away, keeper and kicker are back in their ready poses, heading and tags leave; no cross-dissolve). The last round stays.
  * Three counter cards at the bottom appear one per round and build as the kicks land: Days at school N of M, Late to school N, Early leave N, each ending on the exact
- * number in the data (absent misses in rounds 2 and 3 carry a tag but never add to the Late to school / Early leave numbers).
+ * number in the data (absent days no longer miss in rounds 2 and 3).
  * Pictures: the empty pitch (football-layers/bg.jpg, wide/football-bg.jpg) and WHOLE-figure poses cut from picture takes (keeper ready + four dives, kicker ready + strike (the foot is on the ball) + follow-through);
  * poses swap on the story clock, they are never cut into limbs. The ball and the net are code: a real 3D football (three.js, panel texture, spinning, with a soft
  * shadow on the grass) and the plate's own net picture bent by a small mesh (bulge on a goal, shiver of the post or bar on a miss).
@@ -38,18 +40,14 @@ function makePlan(wk) {
   var absKicks = Math.min(units[0], n);
   var plan = { D: D, n: n, units: units, rounds: [], target: [Math.max(0, D - units[0]), units[1], units[2]] };
   for (var r = 0; r < NR; r++) {
-    // every kick is played in every round. Misses are the LAST kicks: this round's own misses (late / early) just before the absent misses, which come last.
-    var own = r === 0 ? 0 : Math.min(units[r], n - absKicks), m = absKicks + own, firstMiss = n - m, kicks = [], i, q;
+    // every kick is played in every round. Misses are the LAST kicks, and each round misses only for its own event (absent / late / early; Igor, 1 Nov 2026).
+    var own = Math.min(units[r], n), m = own, firstMiss = n - m, kicks = [], i, q;
     for (i = 0; i < n; i++) {
-      var tag = i < firstMiss ? null : (i >= n - absKicks ? "absent" : ROUND_TAG[r]);
+      var tag = i < firstMiss ? null : ROUND_TAG[r];
       kicks.push({ i: i, k: i, corner: CORNER[i], state: tag ? "miss" : "good", tag: tag, u: 0, t0: 0, L: 0, land: 0, tagAt: [] });
     }
-    for (q = 0; q < absKicks; q++) kicks[n - absKicks + q].u = 1;
-    for (q = absKicks; q < units[0] && absKicks > 0; q++) kicks[n - 1 - ((q - absKicks) % absKicks)].u++;          // extra absences stack on a kick that is already absent
-    if (r > 0) {
-      for (q = 0; q < own; q++) kicks[firstMiss + q].u = 1;
-      for (q = own; q < units[r] && own > 0; q++) kicks[n - absKicks - 1 - ((q - own) % own)].u++;                    // extra misses stack on a kick that is already missed
-    }
+    for (q = 0; q < own; q++) kicks[firstMiss + q].u = 1;
+    for (q = own; q < units[r] && own > 0; q++) kicks[n - 1 - ((q - own) % own)].u++;                    // extra misses stack on a kick that is already missed
     var ev = [];                                                      // counter events {t, dv}, round-local seconds
     kicks.forEach(function (p) {
       p.t0 = TM.GO0 + p.k * TM.STEP;                                  // the ball pops on the spot
@@ -58,7 +56,7 @@ function makePlan(wk) {
       if (p.state === "good" && r === 0) ev.push({ t: p.land, dv: 1, p: p });
       for (var j = 0; j < p.u; j++) {
         p.tagAt.push(p.land + TM.TAG + j * TM.TAGSTEP);
-        if (r > 0 && p.tag === ROUND_TAG[r]) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p });          // absent tags never move the Late / Early numbers
+        if (r > 0) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p });
       }
     });
     // the counter ends on the exact number in the data: whatever the kicks could not show goes on the last event (or a fallback one)
@@ -69,7 +67,7 @@ function makePlan(wk) {
       else ev.push({ t: TM.GO0 + 0.6, dv: want, p: null });
     }
     var last = 0; kicks.forEach(function (p) { last = Math.max(last, p.land); });
-    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: n - absKicks, miss: m, kicks: kicks, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 });
+    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: r === 0 ? n - absKicks : (D - units[0] > 0 ? n : 0), miss: m, kicks: kicks, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 && (r === 0 || D - units[0] > 0) });
   }
   return plan;
 }
@@ -524,10 +522,15 @@ MotionIgor.define({
     function tagW(label) { return TAGF * String(label).length * 0.56 + 100; }
     var TAGY = { tl: 484, tr: 484, bl: 790, br: 790 }, TAGX = { tl: 178, tr: 178, bl: 56, br: 56 };       // the top tags stand inside the rebound's way out (the ball leaves up and sideways over the bar)
     PL.rounds.forEach(function (rd) {
+      // 1 Nov 2026: two long top tags ("Late to school x2" twice) met in the middle; when both stand in a round they move out together until they clear each other by 14 px
+      var wTop = { tl: 0, tr: 0 };
+      rd.kicks.forEach(function (p) { if (p.state === "miss" && wTop[p.corner] === 0 && (p.corner === "tl" || p.corner === "tr")) wTop[p.corner] = tagW(c.tags[p.tag] + (p.u > 1 ? " ×" + p.u : "")); });
+      var topX = wTop.tl && wTop.tr ? Math.max(24, Math.min(178, (1080 - wTop.tl - wTop.tr - 14) / 2)) : 178;
       rd.kicks.forEach(function (p) {
         if (p.state !== "miss") return;
         var T = TARGET[p.corner], a = proj(T.wood[0], T.wood[1], T.wood[2]), label = c.tags[p.tag] + (p.u > 1 ? " ×" + p.u : ""), w = tagW(label);
-        var left = p.corner === "tl" || p.corner === "bl", cx = left ? TAGX[p.corner] + w / 2 : 1080 - TAGX[p.corner] - w / 2, cy = TAGY[p.corner];
+        var tx0 = p.corner === "tl" || p.corner === "tr" ? topX : TAGX[p.corner];
+        var left = p.corner === "tl" || p.corner === "bl", cx = left ? tx0 + w / 2 : 1080 - tx0 - w / 2, cy = TAGY[p.corner];
         var box = el("div", "position:absolute;left:" + cx.toFixed(1) + "px;top:" + cy + "px;width:0;height:0;transform-origin:0 0", data);
         var dx = a[0] - cx, dy = a[1] - cy, down = dy > 0, y0 = (down ? 1 : -1) * (TAGH / 2 - 8), tx = clamp(dx, -w / 2 + 44, w / 2 - 44);
         if (Math.abs(dy) > TAGH / 2 + 6 || Math.abs(dx) > w / 2 + 6) {

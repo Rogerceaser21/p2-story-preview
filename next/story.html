@@ -75,9 +75,20 @@
 var T0 = performance.now();   // the loader is in the page's own HTML, so this is its first paint
 
 // ---- which child ----
-var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100", "g36-girl-100", "g36-girl-not100", "g36-boy-100", "g36-boy-not100", "g79-girl-100", "g79-girl-not100", "g79-boy-100", "g79-boy-not100", "g1011-girl-100", "g1011-girl-not100", "g1011-boy-100", "g1011-boy-not100", "g12-boy-100", "g12-boy-not100", "g12-girl-100", "g12-girl-not100"];
+var KIDS = ["girl-100", "girl-not100", "boy-100", "boy-not100", "g36-girl-100", "g36-girl-not100", "g36-boy-100", "g36-boy-not100", "g79-girl-100", "g79-girl-not100", "g79-boy-100", "g79-boy-not100", "g1011-girl-100", "g1011-girl-not100", "g1011-boy-100", "g1011-boy-not100", "g12-boy-100", "g12-boy-not100", "g12-girl-100", "g12-girl-not100", "medal-silver", "medal-gold", "medal-platinum", "medal-titanium"];
 var kid = new URLSearchParams(location.search).get("kid");
 if (KIDS.indexOf(kid) < 0) { location.replace("./"); return; }
+// the four medal samples (1 Nov 2026): one real Grade 12 child's story with the earlier recognition total changed; the label stays on the story and on the page
+if (kid.indexOf("medal-") === 0) {
+  document.title = "Medal sample, not real numbers";
+  var tagCss = document.createElement("style");
+  tagCss.textContent = "#sample-tag{position:fixed;left:50%;transform:translateX(-50%);top:max(8px,env(safe-area-inset-top));z-index:10001;padding:5px 12px;border-radius:999px;border:2px solid #10203f;background:#f2b632;color:#10203f;font:700 12px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;pointer-events:none;white-space:nowrap}#sample-tag.on-page{top:auto;transform:none;left:max(10px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));white-space:normal;max-width:150px;text-align:center}";
+  document.head.appendChild(tagCss);
+  var tag = document.createElement("div");
+  tag.id = "sample-tag"; tag.textContent = "Medal sample, not real numbers";
+  document.body.appendChild(tag);
+  setInterval(function () { tag.className = window.__p2test && window.__p2test.phase === "page" ? "on-page" : ""; }, 250);   // story: top centre, clear of the Weekly report chip and Skip; page: bottom left, clear of the banner and Replay
+}
 
 // everything lives next to this page, so the site works under any sub-path
 var BASE = new URL("p2-story/", location.href).pathname;

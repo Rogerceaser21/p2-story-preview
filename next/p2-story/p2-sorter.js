@@ -1,11 +1,12 @@
 /* P-2 shape sorter beat · p2-sorter  (3D living storybook, real 3D blocks, THREE ROUNDS)
  * "Last week at school" in three short rounds on the same sorter box, every week, a perfect one too. There is one wooden piece per school day
  * open (as many pieces as days open, at most four: star, cylinder, cube, triangle prism; no day names, the data is weekly totals only).
- *   Round 1 "Came to school"  : a day ABSENT is a miss (gold tag Absent).
- *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (gold tag Late to school). A day she was ABSENT plays exactly like in round 1: that
- *                               piece also flies to a wrong hole, does not fit and carries the gold tag Absent (nothing is greyed or left hanging).
- *   Round 3 "Stayed all day"  : a day she LEFT EARLY is a miss (gold tag Early leave); absent days miss again with the tag Absent.
- *   Order inside a round (rounds 2 and 3): pieces that went in first, then the round's own misses (late / early), then the absent misses LAST.
+ *   ONE REAL EVENT = ONE MISSING PIECE (Igor, 1 Nov 2026; replaces the 23 Oct "absent misses in all three rounds"):
+ *   Round 1 "Came to school"  : a day ABSENT is a miss (gold tag Absent). This is the ONLY round where an absence misses.
+ *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (gold tag Late to school). An absent day plays like a good day here (piece in, no tag).
+ *   Round 3 "Stayed all day"  : a day she LEFT EARLY is a miss (gold tag Early leave). An absent day plays like a good day here too.
+ *   Misses are always the LAST pieces of their round.
+ *   NOT AT SCHOOL AT ALL (days open minus absent = 0): rows 2 and 3 stay whole (the rule), but nothing is celebrated: the Late / Early zero cards stay grey (no green, no star burst, no clean-round sparkle). A child present 1 or more days is unchanged.
  * The blocks are REAL 3D solids drawn in code with three.js (a WebGL canvas laid over the photo, vendor/three.min.js, loaded from a local file) and
  * lit like the photo (soft light from the window on the right, soft shadows on the box top).
  *   Good piece: flies over its own hole, tilts, then SINKS into it (solid, no squash). The box top is an invisible depth-only mask with the hole
@@ -16,7 +17,7 @@
  * Between rounds the box clears cleanly (the pieces pop away, the heading leaves, no cross-dissolve) and the next round's pieces pop in. The last round stays.
  * Three counter cards at the bottom appear one per round and build as the pieces land: Days at school N of M (round 1; days open minus absent),
  * Late to school N (round 2), Early leave N (round 3). Each ends on the exact number in the data, whatever the pieces could show
- * (absent misses in rounds 2 and 3 carry a tag but never add to the Late to school / Early leave numbers).
+ * (absent days no longer miss in rounds 2 and 3).
  * Camera: solved from the photo (the box top diamond), so the 3D box top lines up with the picture's top face and the picture's holes.
  * Every frame is a pure function of t (kit rule 1); the photo and three.js are approved exceptions to rule 7, like the mascot.
  * If WebGL is not available the photo, headings, tags and counters still play (no pieces).
@@ -35,21 +36,19 @@ function makePlan(wk) {
   wk = wk || {};
   var D = Math.max(0, Math.round(wk.daysOpen || 0)), n = Math.min(4, D);
   var units = [Math.max(0, Math.round(wk.absent || 0)), Math.max(0, Math.round(wk.lateToSchool || 0)), Math.max(0, Math.round(wk.earlyLeave || 0))];
-  var absPieces = Math.min(units[0], n);
+  var absPieces = Math.min(units[0], n);                                // used only for the round 1 card colour (present = pieces that went in)
   var plan = { D: D, n: n, units: units, rounds: [], target: [Math.max(0, D - units[0]), units[1], units[2]] };
   for (var r = 0; r < NR; r++) {
-    // every piece is played in every round. Misses are the LAST pieces: this round's own misses (late / early) just before the absent misses, which come last.
-    var own = r === 0 ? 0 : Math.min(units[r], n - absPieces), m = absPieces + own, firstMiss = n - m, pieces = [], i, q;
+    // every piece is played in every round. One real event = one missing piece (Igor, 1 Nov 2026): round 1 misses only for absent days, round 2 only
+    // for late to school, round 3 only for early leave. A day she was absent plays like a good day in rounds 2 and 3 (piece in, no tag).
+    // Misses are the LAST pieces of the round.
+    var own = Math.min(units[r], n), m = own, firstMiss = n - m, pieces = [], i, q;
     for (i = 0; i < n; i++) {
-      var tag = i < firstMiss ? null : (i >= n - absPieces ? "absent" : ROUND_TAG[r]);
+      var tag = i < firstMiss ? null : ROUND_TAG[r];
       pieces.push({ i: i, state: tag ? "miss" : "good", tag: tag, k: i, u: 0, t0: 0, land: 0, tagAt: [] });
     }
-    for (q = 0; q < absPieces; q++) pieces[n - absPieces + q].u = 1;
-    for (q = absPieces; q < units[0] && absPieces > 0; q++) pieces[n - 1 - ((q - absPieces) % absPieces)].u++;       // extra absences stack on a piece that is already absent
-    if (r > 0) {
-      for (q = 0; q < own; q++) pieces[firstMiss + q].u = 1;
-      for (q = own; q < units[r] && own > 0; q++) pieces[n - absPieces - 1 - ((q - own) % own)].u++;                  // extra misses stack on a piece that is already missed
-    }
+    for (q = 0; q < own; q++) pieces[firstMiss + q].u = 1;
+    for (q = own; q < units[r] && own > 0; q++) pieces[n - 1 - ((q - own) % own)].u++;                                  // extra misses stack on a piece that is already missed
     var ev = [];                                                      // counter events {t, dv}, round-local seconds
     pieces.forEach(function (p) {
       p.t0 = TM.GO0 + p.k * TM.STEP;
@@ -57,7 +56,7 @@ function makePlan(wk) {
       if (p.state === "good" && r === 0) ev.push({ t: p.land, dv: 1, p: p });
       for (var j = 0; j < p.u; j++) {
         p.tagAt.push(p.land + TM.TAG + j * TM.TAGSTEP);
-        if (r > 0 && p.tag === ROUND_TAG[r]) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p });         // absent tags never move the Late / Early numbers
+        if (r > 0) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p });
       }
     });
     // the counter ends on the exact number in the data: whatever the pieces could not show goes on the last event (or a fallback one)
@@ -68,7 +67,7 @@ function makePlan(wk) {
       else ev.push({ t: TM.GO0 + 0.6, dv: want, p: null });
     }
     var last = 0; pieces.forEach(function (p) { last = Math.max(last, p.land); });
-    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: n - absPieces, miss: m, pieces: pieces, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 });
+    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: r === 0 ? n - absPieces : (D - units[0] > 0 ? n : 0), miss: m, pieces: pieces, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 && (r === 0 || D - units[0] > 0) });
   }
   return plan;
 }

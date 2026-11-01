@@ -93,7 +93,7 @@ window.P2Kid = {
   ON: true,
   art: function (c, art) {
     var on = c.kidArt !== undefined ? !!c.kidArt : (window.P2_KID_ART !== undefined ? !!window.P2_KID_ART : (P2Kid.ON && !/[?&]kidart=0\b/.test(location.search)));
-    // Grade 3-6 (content.band "g36"): the same folders with a 36 on them (girl36 = Noor's art, boy36 = the Grade 3-6 boy), see rebuild-serve.sh
+    // Grade 3-6 (content.band "g36"): the same folders with a 36 on them (girl36 = Maryam's art, boy36 = the Grade 3-6 boy), see rebuild-serve.sh
     // Secondary (26 Oct 2026): band "g79" + girl = girl79 (the Grade 8 girl), band "g79" + boy = boy79 (29 Oct 2026), band "g1012" + boy = boy1012 (the Grade 12 boy), band "g1012" + girl = girl1012 (30 Oct 2026). Every Grade 7-12 combination has its own art now;
     // the shared P-2 pieces keep working, and the secondary scenes (p712-* / p79-*) need the exact folder
     // (P712.built(content) is false for the fallbacks), so the secondary story must not be mounted for them until their art is built.

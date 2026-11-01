@@ -16,7 +16,8 @@
  *     days (= lastWeek's numbers, the week's school days as the games read them),
  *     band ("p2" | "g36" | "g79" | "g1012" | null), look ("girl" when gender is F, else "boy"), grade12 (true for Grade 12 only), initials ("OA", jacket front),
  *     classYear ("27" for a 26/27 Grade 12, else null; jacket back),
- *     secondary (Grade 7-12 only, else null): { lateToClass: n (a COUNT, minutes always 0), bathroom: n, clinic: n, emails: [ { teacher, category, note, count } ] } for the newest week;
+ *     secondary (Grade 7-12 only, else null): { lateToClass: n (a COUNT, minutes always 0), bathroom: n, clinic: n, awardsBefore: n (the year's recognitions before this week), emails: [ { teacher, category, note, count, medal?, medalAt? } ] } for the newest week;
+ *       medal / medalAt sit ONLY on the entry whose count makes the year total reach 4 (silver), 8 (gold), 12 (platinum) or 16 (titanium) (1 Nov 2026);
  *       the emails are that week's award entries exactly as the page lists them (notes whole, never split on commas) }
  * The secondary bands (26 Oct 2026, graph/p712-proof): Grade 7-9 = "g79", Grade 10-12 = "g1012" (storyBand / storyGrade / g79Band / g1012Band). `perfect` is unchanged:
  * late to CLASS never blocks a 100% week (the page's rule reads late to school, absences and early leave only).
@@ -250,6 +251,28 @@ function awardEntries(list, weekEnding) {
   return out;
 }
 
+/** Milestone medals (Igor, 1 Nov 2026, from his picture): positive recognitions over the SCHOOL YEAR reach 4 = Silver, 8 = Gold, 12 = Platinum, 16 = Titanium. Past 16 there is no more medal. */
+var MEDAL_STEPS = [[4, "silver"], [8, "gold"], [12, "platinum"], [16, "titanium"]];
+/** The year's recognitions BEFORE the newest week = the sum of the `awards` field (WEEK_FIELDS index 9) of every EARLIER week of the child's 26/27 `weekly` rows (never 25/26). */
+function awardsBeforeWeek(student) {
+  var w = student && student.weekly, we = student && student.lastWeekEnding, sum = 0;
+  if (!w || !we) return 0;
+  Object.keys(w).forEach(function (k) { if (k < we && w[k] && w[k].length > 9) sum += Number(w[k][9]) || 0; });
+  return sum;
+}
+/** Walk the newest week's entries in order, adding each entry's count to the year total so far; the entry that makes the total CROSS a milestone gets { medal, medalAt } (an entry crossing two plays the
+ *  highest only; a milestone already passed before the week never plays; a total already past 16 plays nothing). Entries are changed in place; the others are left untouched. */
+function markMedals(entries, before) {
+  var run = Number(before) || 0;
+  entries.forEach(function (e) {
+    var from = run, n = Number(e.count); run += isFinite(n) && n > 0 ? n : 0;
+    var hit = null;
+    MEDAL_STEPS.forEach(function (m) { if (from < m[0] && run >= m[0]) hit = m; });
+    if (hit) { e.medal = hit[1]; e.medalAt = hit[0]; }
+  });
+  return entries;
+}
+
 function toStory(response) {
   var years = (response && response.years) || {};
   var student = years["2627"] || (response && response.student);
@@ -271,7 +294,11 @@ function toStory(response) {
     // late to class (a COUNT, minutes always 0), bathroom, clinic and the week's award entries: the numbers the 26/27 page's "More about this year" shows for the newest week. Null for primary children.
     secondary: isSecondaryStudent(student) ? {
       lateToClass: nz(wk.lateToClass), bathroom: nz(wk.bathroom), clinic: nz(wk.clinic),
-      emails: awardEntries(student.awards, student.lastWeekEnding != null ? student.lastWeekEnding : null).map(function (a) { return { teacher: a.teacher, category: a.category, note: a.note, count: a.count }; })
+      awardsBefore: String(student.year || "2627") === "2627" ? awardsBeforeWeek(student) : 0,       // the year's recognitions before this week (the medals count from here)
+      emails: (function () {
+        var list = awardEntries(student.awards, student.lastWeekEnding != null ? student.lastWeekEnding : null).map(function (a) { return { teacher: a.teacher, category: a.category, note: a.note, count: a.count }; });
+        return String(student.year || "2627") === "2627" ? markMedals(list, awardsBeforeWeek(student)) : list;       // an entry that reaches 4 / 8 / 12 / 16 gets medal ("silver" | "gold" | "platinum" | "titanium") and medalAt (4 | 8 | 12 | 16)
+      })()
     } : null,
     child: { name: student.forename != null && student.forename !== "" ? student.forename : student.name, form: student.form, grade: student.grade },
     weekEnding: student.lastWeekEnding || null,

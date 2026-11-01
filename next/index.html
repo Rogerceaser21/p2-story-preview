@@ -14,13 +14,17 @@
   h1{font-size:clamp(28px,7vw,40px);line-height:1.1;margin:12px 0 8px;font-weight:700}
   h2{font-size:clamp(20px,5vw,26px);margin:26px 0 12px;font-weight:700}
   p.sub{font-size:19px;margin:0 0 26px;font-weight:500}
+  p.warn{font-size:16px;margin:0 0 14px;font-weight:600}
   .grid{display:grid;gap:16px;grid-template-columns:1fr}
   @media (min-width:520px){.grid{grid-template-columns:1fr 1fr}}
   a.kid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:120px;padding:18px 14px;border-radius:28px;border:4px solid #10203f;
     box-shadow:6px 6px 0 #10203f;color:#10203f;text-decoration:none;font-weight:700;font-size:26px;line-height:1.1}
   a.kid small{font-size:18px;font-weight:500}
+  a.kid small.n{font-size:20px;font-weight:600}
+  a.kid small.u{font-size:13px;font-weight:500;opacity:.75}
   a.kid:active{transform:translate(3px,3px);box-shadow:3px 3px 0 #10203f}
   a.g{background:#f9c6dc} a.b{background:#bfe0ff}
+  a.m.silver{background:#dfe3e8} a.m.gold{background:#f6dc8a} a.m.platinum{background:#d9e6ee} a.m.titanium{background:#c9ccd6}
   a.kid:focus-visible{outline:4px solid #f2b632;outline-offset:3px}
   footer{margin-top:28px;font-size:15px;font-weight:500;opacity:.8}
 </style>
@@ -28,41 +32,49 @@
 <body>
 <main>
   <h1>Attendance story: test links</h1>
-  <p class="sub">Made-up names, real numbers.</p>
+  <p class="sub">Real names and numbers, week ending 15 Oct 2026.</p>
   <h2>Pre Kindy to Grade 2</h2>
   <div class="grid">
-    <a class="kid g" href="story.html?kid=girl-100">Girl 100%<small>Noor</small></a>
-    <a class="kid g" href="story.html?kid=girl-not100">Girl not 100%<small>Layla</small></a>
-    <a class="kid b" href="story.html?kid=boy-100">Boy 100%<small>Omar</small></a>
-    <a class="kid b" href="story.html?kid=boy-not100">Boy not 100%<small>Yousef</small></a>
+    <a class="kid g" href="story.html?kid=girl-100">Girl 100%<small class="n">Mariam Alameri</small><small>1A · Grade 1</small><small class="u">username 23000781</small></a>
+    <a class="kid g" href="story.html?kid=girl-not100">Girl not 100%<small class="n">Maryam Alhouli</small><small>2E · Grade 2</small><small class="u">username 23000036</small></a>
+    <a class="kid b" href="story.html?kid=boy-100">Boy 100%<small class="n">Hamdan Abdelrahman</small><small>1A · Grade 1</small><small class="u">username 23000616</small></a>
+    <a class="kid b" href="story.html?kid=boy-not100">Boy not 100%<small class="n">Sultan Alshuweihi</small><small>2D · Grade 2</small><small class="u">username 23000159</small></a>
   </div>
   <h2>Grade 3-6</h2>
   <div class="grid">
-    <a class="kid g" href="story.html?kid=g36-girl-100">Girl 100%<small>Anoud</small><small>Grade 3-6</small></a>
-    <a class="kid g" href="story.html?kid=g36-girl-not100">Girl not 100%<small>Dalal</small><small>Grade 3-6</small></a>
-    <a class="kid b" href="story.html?kid=g36-boy-100">Boy 100%<small>Fares</small><small>Grade 3-6</small></a>
-    <a class="kid b" href="story.html?kid=g36-boy-not100">Boy not 100%<small>Mazen</small><small>Grade 3-6</small></a>
+    <a class="kid g" href="story.html?kid=g36-girl-100">Girl 100%<small class="n">Fatma Alhammadi</small><small>4A · Grade 4</small><small class="u">username 20181052</small></a>
+    <a class="kid g" href="story.html?kid=g36-girl-not100">Girl not 100%<small class="n">Fatma Al-Ali</small><small>6E · Grade 6</small><small class="u">username 20180979</small></a>
+    <a class="kid b" href="story.html?kid=g36-boy-100">Boy 100%<small class="n">Ahmed Al-Hajjaji</small><small>5A · Grade 5</small><small class="u">username 20180952</small></a>
+    <a class="kid b" href="story.html?kid=g36-boy-not100">Boy not 100%<small class="n">Obaid Salem Alketbi</small><small>5E · Grade 5</small><small class="u">username 20180790</small></a>
   </div>
   <h2>Grade 7-9</h2>
   <div class="grid">
-    <a class="kid g" href="story.html?kid=g79-girl-100">Girl 100%<small>Sondos</small><small>Grade 7-9</small></a>
-    <a class="kid g" href="story.html?kid=g79-girl-not100">Girl not 100%<small>Rimas</small><small>Grade 7-9</small></a>
-    <a class="kid b" href="story.html?kid=g79-boy-100">Boy 100%<small>Nawaf</small><small>Grade 7-9</small></a>
-    <a class="kid b" href="story.html?kid=g79-boy-not100">Boy not 100%<small>Nizar</small><small>Grade 7-9</small></a>
+    <a class="kid g" href="story.html?kid=g79-girl-100">Girl 100%<small class="n">Mariam Alqaydi</small><small>8B · Grade 8</small><small class="u">username 20170015</small></a>
+    <a class="kid g" href="story.html?kid=g79-girl-not100">Girl not 100%<small class="n">Moza Alsuwaidi</small><small>8B · Grade 8</small><small class="u">username 20144938</small></a>
+    <a class="kid b" href="story.html?kid=g79-boy-100">Boy 100%<small class="n">Hani Al-Noori</small><small>8E · Grade 8</small><small class="u">username 20180595</small></a>
+    <a class="kid b" href="story.html?kid=g79-boy-not100">Boy not 100%<small class="n">Salem Alharthi</small><small>7F · Grade 7</small><small class="u">username 23000162</small></a>
   </div>
   <h2>Grade 10-11</h2>
   <div class="grid">
-    <a class="kid g" href="story.html?kid=g1011-girl-100">Girl 100%<small>Hanin</small><small>Grade 10-11</small></a>
-    <a class="kid g" href="story.html?kid=g1011-girl-not100">Girl not 100%<small>Nadine</small><small>Grade 10-11</small></a>
-    <a class="kid b" href="story.html?kid=g1011-boy-100">Boy 100%<small>Zayd</small><small>Grade 10-11</small></a>
-    <a class="kid b" href="story.html?kid=g1011-boy-not100">Boy not 100%<small>Jaber</small><small>Grade 10-11</small></a>
+    <a class="kid g" href="story.html?kid=g1011-girl-100">Girl 100%<small class="n">Ayesha Iman</small><small>11E · Grade 11</small><small class="u">username 20143149</small></a>
+    <a class="kid g" href="story.html?kid=g1011-girl-not100">Girl not 100%<small class="n">Shamsa Almualla</small><small>11C · Grade 11</small><small class="u">username 23000263</small></a>
+    <a class="kid b" href="story.html?kid=g1011-boy-100">Boy 100%<small class="n">Mansour Alnajjar</small><small>11C · Grade 11</small><small class="u">username 23000502</small></a>
+    <a class="kid b" href="story.html?kid=g1011-boy-not100">Boy not 100%<small class="n">Khalid Almurshidi</small><small>10A · Grade 10</small><small class="u">username 20144254</small></a>
   </div>
   <h2>Grade 12</h2>
   <div class="grid">
-    <a class="kid g" href="story.html?kid=g12-girl-100">Girl 100%<small>Nuha</small><small>Grade 12</small></a>
-    <a class="kid g" href="story.html?kid=g12-girl-not100">Girl not 100%<small>Thuraya</small><small>Grade 12</small></a>
-    <a class="kid b" href="story.html?kid=g12-boy-100">Boy 100%<small>Hatem</small><small>Grade 12</small></a>
-    <a class="kid b" href="story.html?kid=g12-boy-not100">Boy not 100%<small>Mishal</small><small>Grade 12</small></a>
+    <a class="kid g" href="story.html?kid=g12-girl-100">Girl 100%<small class="n">Fatima Alteneiji</small><small>12A · Grade 12</small><small class="u">username 20132992</small></a>
+    <a class="kid g" href="story.html?kid=g12-girl-not100">Girl not 100%<small class="n">Jumanah Alhudaithi</small><small>12B · Grade 12</small><small class="u">username 20180008</small></a>
+    <a class="kid b" href="story.html?kid=g12-boy-100">Boy 100%<small class="n">Rashed Morib</small><small>12D · Grade 12</small><small class="u">username 20133045</small></a>
+    <a class="kid b" href="story.html?kid=g12-boy-not100">Boy not 100%<small class="n">Rashid Sharif</small><small>12D · Grade 12</small><small class="u">username 23000418</small></a>
+  </div>
+  <h2>Medal samples</h2>
+  <p class="warn">Medal sample, not real numbers. One Grade 12 child's story with the earlier recognition total changed so this week's recognition reaches the medal.</p>
+  <div class="grid">
+    <a class="kid m silver" href="story.html?kid=medal-silver">Silver<small class="n">Medal sample, not real numbers</small><small>4 recognitions · Grade 12</small></a>
+    <a class="kid m gold" href="story.html?kid=medal-gold">Gold<small class="n">Medal sample, not real numbers</small><small>8 recognitions · Grade 12</small></a>
+    <a class="kid m platinum" href="story.html?kid=medal-platinum">Platinum<small class="n">Medal sample, not real numbers</small><small>12 recognitions · Grade 12</small></a>
+    <a class="kid m titanium" href="story.html?kid=medal-titanium">Titanium<small class="n">Medal sample, not real numbers</small><small>16 recognitions · Grade 12</small></a>
   </div>
   <footer>Test page. Tap a card, then tap play.</footer>
 </main>

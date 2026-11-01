@@ -1,9 +1,11 @@
 /* Grade 3-6 jigsaw beat · p36-puzzle  (3D living storybook; the girls' game for Grade 3 to Grade 6, THREE ROUNDS of 6 s = 18 s)
  * "Last week at school" as a 12-piece jigsaw of the AIS logo on a wooden tray, seen from above. One piece per school day open (at most four per row), one ROW per round:
  *   Round 1 "Came to school"  : a day ABSENT is a miss (gold tag Absent).
- *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (gold tag Late to school). A day she was ABSENT misses again, with the tag Absent (nothing is greyed).
- *   Round 3 "Stayed all day"  : a day she LEFT EARLY is a miss (gold tag Early leave); absent days miss again with the tag Absent.
- *   Order inside a round (same rules as the P-2 sorter, p2-sorter.js): the pieces that fit go first, then the round's own misses (late / early), the absent misses LAST.
+ *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (gold tag Late to school). A day she was ABSENT plays like a good day here (piece fits, no tag).
+ *   Round 3 "Stayed all day"  : a day she LEFT EARLY is a miss (gold tag Early leave); an absent day plays like a good day here too.
+ *   ONE REAL EVENT = ONE MISSING PIECE (Igor, 1 Nov 2026; replaces the 23 Oct absent-in-all-rounds): an absence misses in ROUND 1 ONLY; rounds 2 and 3 miss only for late to school / early leave, and an absent day plays like a good day there (no miss, no tag).
+ *   Order inside a round (same rules as the P-2 sorter, p2-sorter.js): the pieces that fit go first, then the round's misses LAST.
+ *   NOT AT SCHOOL AT ALL (days open minus absent = 0): rows 2 and 3 stay whole (the rule), but nothing is celebrated: the Late / Early zero cards stay grey (no green, no star burst, no clean-round sparkle). A child present 1 or more days is unchanged.
  * The board BUILDS UP across the rounds: row 1 stays when row 2 starts, so a perfect week ends on the whole AIS logo (a short gold sparkle on the finished logo).
  *   Good day : the piece comes in from above, hovers over its slot (big soft shadow), drops in and settles (the shadow tightens to nothing: it is flush). No squash.
  *   Missed day: the piece comes to its slot, turned the wrong way, bumps the edge, does NOT fit, slides off the tray and lies on the desk below it (rotated a little) with its
@@ -11,7 +13,7 @@
  *   Days not open that week (fewer than four): those columns' pieces are already in place when the round starts (normal colour, no animation, no tag).
  *   More misses than free pieces (odd data): the extra misses count on one tag ("Late to school x2"); if no piece is left the number just ticks on its card.
  * Three counter cards at the bottom (same as the sorter): Days at school N of M (round 1), Late to school N (round 2), Early leave N (round 3); each ends on the exact number in
- * the data (absent misses in rounds 2 and 3 carry a tag but never add to the Late / Early numbers).
+ * the data (absent days no longer miss in rounds 2 and 3).
  * The pieces are pictures (pieces cut from the AIS logo by src/tools/jigsaw.py, seed 36, packed by src/tools/puzzle_pack.py: p-rXcY.webp = piece with its bevel, s-rXcY.webp = its
  * soft shadow); the slot outlines are drawn from the same curves (ported from jigsaw.py). No WebGL. Every frame is a pure function of t (kit rule 1).
  * MotionIgor.registry["p36-puzzle"].cues(content) returns [{ t, name }] in beat-local seconds: round-start, piece-in (a piece drops into its slot), piece-miss (a missed piece
@@ -29,17 +31,13 @@ function makePlan(wk) {
   var absPieces = Math.min(units[0], n);
   var plan = { D: D, n: n, units: units, rounds: [], target: [Math.max(0, D - units[0]), units[1], units[2]], misses: 0 };
   for (var r = 0; r < NR; r++) {
-    var own = r === 0 ? 0 : Math.min(units[r], n - absPieces), m = absPieces + own, firstMiss = n - m, pieces = [], i, q;
+    var own = Math.min(units[r], n), m = own, firstMiss = n - m, pieces = [], i, q;
     for (i = 0; i < n; i++) {
-      var tag = i < firstMiss ? null : (i >= n - absPieces ? "absent" : ROUND_TAG[r]);
+      var tag = i < firstMiss ? null : ROUND_TAG[r];
       pieces.push({ i: i, state: tag ? "miss" : "good", tag: tag, k: i, u: 0, t0: 0, land: 0, tagAt: [], cell: -1 });
     }
-    for (q = 0; q < absPieces; q++) pieces[n - absPieces + q].u = 1;
-    for (q = absPieces; q < units[0] && absPieces > 0; q++) pieces[n - 1 - ((q - absPieces) % absPieces)].u++;       // extra absences stack on a piece that is already absent
-    if (r > 0) {
-      for (q = 0; q < own; q++) pieces[firstMiss + q].u = 1;
-      for (q = own; q < units[r] && own > 0; q++) pieces[n - absPieces - 1 - ((q - own) % own)].u++;                  // extra misses stack on a piece that is already missed
-    }
+    for (q = 0; q < own; q++) pieces[firstMiss + q].u = 1;
+    for (q = own; q < units[r] && own > 0; q++) pieces[n - 1 - ((q - own) % own)].u++;                  // extra misses stack on a piece that is already missed
     var ev = [];                                                      // counter events {t, dv}, round-local seconds
     pieces.forEach(function (p) {
       p.t0 = TM.GO0 + p.k * TM.STEP;
@@ -49,7 +47,7 @@ function makePlan(wk) {
       if (p.state === "good" && r === 0) ev.push({ t: p.land, dv: 1, p: p });
       for (var j = 0; j < p.u; j++) {
         p.tagAt.push(p.land + TM.TAG + j * TM.TAGSTEP);
-        if (r > 0 && p.tag === ROUND_TAG[r]) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p });         // absent tags never move the Late / Early numbers
+        if (r > 0) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p });
       }
     });
     // the counter ends on the exact number in the data: whatever the pieces could not show goes on the last event (or a fallback one)
@@ -60,7 +58,7 @@ function makePlan(wk) {
       else ev.push({ t: TM.GO0 + 0.6, dv: want, p: null });
     }
     var last = 0; pieces.forEach(function (p) { last = Math.max(last, p.land); });
-    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: n - absPieces, miss: m, pieces: pieces, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 });
+    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: r === 0 ? n - absPieces : (D - units[0] > 0 ? n : 0), miss: m, pieces: pieces, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 && (r === 0 || D - units[0] > 0) });
   }
   // the desk: every missed piece gets the next free cell, round by round, left to right (the layout depends only on how many there are)
   var cell = 0;
@@ -148,6 +146,7 @@ function layoutDesk(items) {
   [0.54, 0.46, 0.4, 0.34, 0.3, 0.27, 0.24, 0.21, 0.18, 0.15, 0.12].forEach(function (sp) { plans.push({ style: "side", sp: sp, ts: 1 }, { style: "side", sp: sp, ts: 0.95 }); });   // below 0.21 only for weeks that cannot happen (5 early leaves in a 4 day week)
   for (q = 0; q < plans.length; q++) {
     var P = plans[q], cells = [], rows = [], row = null, j;
+    if (P.style === "side" && P.sp < 0.21) { var GD = groupedDesk(items); if (GD && GD.sp > P.sp) return GD; }     // 1 Nov 2026: below 0.21 the one-tag-per-round grouped desk gives bigger pieces
     for (j = 0; j < M; j++) {                                       // the footprint of every piece at this scale and its fixed turn
       var it = items[j], B = pieceBox(it.r, it.c), rot = restRot(j) * Math.PI / 180, w = (B.x1 - B.x0) * P.sp, h = (B.y1 - B.y0) * P.sp;
       var fw = w * Math.abs(Math.cos(rot)) + h * Math.abs(Math.sin(rot)) + 4, fh = h * Math.abs(Math.cos(rot)) + w * Math.abs(Math.sin(rot)) + 4;
@@ -176,7 +175,49 @@ function layoutDesk(items) {
     });
     return { cells: out, ts: P.ts, style: P.style, sp: P.sp };
   }
-  return { cells: items.map(function () { return { x: 540, y: 1400, rot: 0, s: 0.2, tx: 540, ty: 1500, pcx: 540, pcy: 1400 }; }), ts: 0.95, style: "overflow", sp: 0.2 };   // cannot happen with at most 12 misses (checked for every week)
+  return groupedDesk(items) || { cells: items.map(function () { return { x: 540, y: 1400, rot: 0, s: 0.2, tx: 540, ty: 1500, pcx: 540, pcy: 1400 }; }), ts: 0.95, style: "overflow", sp: 0.2 };   // last resort only: groupedDesk fits every week the data can produce (checked)
+}
+// 1 Nov 2026 (Igor: an absent day can also be late or early, so a week can have 12 misses with the long tag words, which no flow layout fits): the GROUPED desk. One column per round: that round's
+// missed pieces in a short row, and ONE gold tag under them that counts them ("Late to school \u00d74"), the same stacking the plan already uses when there are more misses than free pieces.
+// The tag belongs to the LAST piece of its group (it appears when the group is complete); the other cells have no tag (cell.noTag). Tags keep their full size (ts 1).
+function groupedDesk(items) {
+  var avail = DESK.bot - DESK.top, groups = [], j;
+  items.forEach(function (it, jj) {
+    var g = groups[groups.length - 1];
+    if (!g || g.r !== it.r) { g = { r: it.r, idx: [], u: 0, base: it.base }; groups.push(g); }
+    g.idx.push(jj); g.u += it.u || 1;
+  });
+  groups.forEach(function (g) { g.label = g.base + (g.u > 1 ? " \u00d7" + g.u : ""); });
+  var sps = [0.54, 0.46, 0.4, 0.34, 0.3, 0.27, 0.24, 0.21, 0.18, 0.15, 0.12];
+  for (var q = 0; q < sps.length; q++) {
+    var sp = sps[q], cols = [], W = 0, H = 0;
+    groups.forEach(function (g) {
+      var fws = [], fhs = [];
+      g.idx.forEach(function (jj) {
+        var it = items[jj], B = pieceBox(it.r, it.c), rot = restRot(jj) * Math.PI / 180, w = (B.x1 - B.x0) * sp, h = (B.y1 - B.y0) * sp;
+        fws.push(w * Math.abs(Math.cos(rot)) + h * Math.abs(Math.sin(rot)) + 4); fhs.push(h * Math.abs(Math.cos(rot)) + w * Math.abs(Math.sin(rot)) + 4);
+      });
+      var rowW = fws.reduce(function (a, v) { return a + v; }, 0) + 6 * (fws.length - 1), rowH = Math.max.apply(null, fhs), tw = tagWidthOf(g.label);
+      cols.push({ g: g, fws: fws, fhs: fhs, rowW: rowW, rowH: rowH, tw: tw, cw: Math.max(rowW, tw) });
+    });
+    cols.forEach(function (cl) { W += cl.cw; H = Math.max(H, cl.rowH + 4 + TAGH); });
+    W += TGAP * (cols.length - 1);
+    if (W > ROWW || H > avail) continue;
+    var out = [], x = 540 - W / 2, y0 = DESK.top + (avail - H) / 2;
+    cols.forEach(function (cl) {
+      var px = x + (cl.cw - cl.rowW) / 2;
+      cl.g.idx.forEach(function (jj, k) {
+        var it = items[jj], B = pieceBox(it.r, it.c), rot = restRot(jj), rad = rot * Math.PI / 180, pcx = px + cl.fws[k] / 2, pcy = y0 + cl.rowH / 2;
+        var bx = (B.x0 + B.x1) / 2 * sp, by = (B.y0 + B.y1) / 2 * sp, last = k === cl.g.idx.length - 1;
+        out[jj] = { x: pcx - (bx * Math.cos(rad) - by * Math.sin(rad)), y: pcy - (bx * Math.sin(rad) + by * Math.cos(rad)), rot: rot, s: sp, pcx: pcx, pcy: pcy,
+          tx: x + cl.cw / 2, ty: y0 + cl.rowH + 4 + TAGH / 2, noTag: !last, label: cl.g.label };
+        px += cl.fws[k] + 6;
+      });
+      x += cl.cw + TGAP;
+    });
+    return { cells: out, ts: 1, style: "grouped", sp: sp };
+  }
+  return null;
 }
 
 MotionIgor.define({
@@ -192,7 +233,7 @@ MotionIgor.define({
   // the desk layout of a week (for the checks): { style, sp, ts, cells: [{ x, y, rot, s, tx, ty }] } in the order the pieces are missed
   layout: function (content) {
     var c = MotionIgor.util.deepMerge(MotionIgor.registry["p36-puzzle"].defaults, content || {}), PL = makePlan(c.lastWeek), items = [];
-    PL.rounds.forEach(function (rd) { rd.pieces.forEach(function (p) { if (p.state === "miss") items.push({ r: rd.r, c: p.i, label: c.tags[p.tag] + (p.u > 1 ? " \u00d7" + p.u : "") }); }); });
+    PL.rounds.forEach(function (rd) { rd.pieces.forEach(function (p) { if (p.state === "miss") items.push({ r: rd.r, c: p.i, base: c.tags[p.tag], u: p.u, label: c.tags[p.tag] + (p.u > 1 ? " \u00d7" + p.u : "") }); }); });
     return layoutDesk(items);
   },
   defaults: {
@@ -228,7 +269,7 @@ MotionIgor.define({
 
     var PL = makePlan(c.lastWeek), daysTotal = PL.D, n = PL.n, KS = FLOOR.k;
     var missItems = [];                                                // the missed pieces in the order they are missed: the desk layout needs their tag words
-    PL.rounds.forEach(function (rd) { rd.pieces.forEach(function (p) { if (p.state === "miss") missItems.push({ r: rd.r, c: p.i, label: c.tags[p.tag] + (p.u > 1 ? " \u00d7" + p.u : "") }); }); });
+    PL.rounds.forEach(function (rd) { rd.pieces.forEach(function (p) { if (p.state === "miss") missItems.push({ r: rd.r, c: p.i, base: c.tags[p.tag], u: p.u, label: c.tags[p.tag] + (p.u > 1 ? " \u00d7" + p.u : "") }); }); });
     var DK = layoutDesk(missItems);
     ctx.stage.style.background = "#efe2d0";
     // ---------------------------------------------------------------- the tray plate (one picture) and the slot outlines
@@ -376,7 +417,8 @@ MotionIgor.define({
     PL.rounds.forEach(function (rd) {
       rd.pieces.forEach(function (p) {
         if (p.state !== "miss") return;
-        var cell = DK.cells[p.cell], label = c.tags[p.tag] + (p.u > 1 ? " ×" + p.u : "");
+        var cell = DK.cells[p.cell], label = cell.label || (c.tags[p.tag] + (p.u > 1 ? " ×" + p.u : ""));
+        if (cell.noTag) return;                                       // grouped desk: the last piece of a round's group carries its tag
         var box = el("div", "position:absolute;left:" + cell.tx.toFixed(1) + "px;top:" + cell.ty.toFixed(1) + "px;width:0;height:0;transform-origin:0 0", data);
         var tg = el("div", "position:absolute;left:0;top:0;translate:-50% -50%;display:flex;align-items:center;gap:12px;white-space:nowrap;padding:12px 24px 12px 14px;border-radius:999px;" +
           "background:" + GOLD + ";border:5px solid " + INK + ";box-shadow:5px 5px 0 " + INK + ";font:700 " + TAGF + "px/1 " + FONT + ";color:" + INK + ";transform-origin:50% 50%", box);

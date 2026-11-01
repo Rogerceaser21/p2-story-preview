@@ -2,9 +2,11 @@
  * Same data, same rounds, same counters and gold tags as the P-2 sorter, the Grade 3-6 football and the pool, told as table tennis points. TWO RACKETS, NO PEOPLE:
  * the red racket (ours, near end) and the grey racket (the opponent, far end), each one rigid picture that only moves and turns as a whole piece.
  *   Round 1 "Came to school"  : a day ABSENT is a miss (our return hits the net and drops on our side; gold tag Absent).
- *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (the ball passes the meeting point and leaves our end, the red racket arrives too late; gold tag Late to school). An absent day plays as in round 1.
- *   Round 3 "Stayed all day"  : a day he LEFT EARLY is a miss (the red racket slides off the table before the ball arrives and the ball goes on past where it was; gold tag Early leave); absent days miss again with the tag Absent.
- *   Order inside a round: days that went well first, then the round's own misses (late / early), then the absent misses LAST (same plan as p36-football's makePlan).
+ *   Round 2 "On time"         : a day LATE TO SCHOOL is a miss (the ball passes the meeting point and leaves our end, the red racket arrives too late; gold tag Late to school). An absent day plays like a good day here (we return it, no tag).
+ *   Round 3 "Stayed all day"  : a day he LEFT EARLY is a miss (the red racket slides off the table before the ball arrives and the ball goes on past where it was; gold tag Early leave); an absent day plays like a good day here too.
+ *   ONE REAL EVENT = ONE MISSING PIECE (Igor, 1 Nov 2026; replaces the 23 Oct absent-in-all-rounds): an absence misses in ROUND 1 ONLY; rounds 2 and 3 miss only for late to school / early leave, and an absent day plays like a good day there (no miss, no tag).
+ *   Order inside a round: days that went well first, then the round's misses LAST (same plan as p36-football's makePlan).
+ *   NOT AT SCHOOL AT ALL (days open minus absent = 0): rows 2 and 3 stay whole (the rule), but nothing is celebrated: the Late / Early zero cards stay grey (no green, no star burst, no clean-round sparkle). A child present 1 or more days is unchanged.
  * One point per school day open (at most four), 1.8 s each (a round is 8 s: four points = 7.2 s plus the start; the beat is 24 s, the last round holds to the end). Every point has its own LANE of the table
  * (serve spot, first bounce, second bounce, meeting point and return all differ from point to point). Every point:
  *   the grey racket serves (cue "kick"); the ball bounces on the far half, goes OVER the net (a real height arc, never through it), bounces on our half; the red racket moves to meet it. Then
@@ -14,7 +16,7 @@
  *   EARLY     : the red racket slides off the table before the ball arrives; the ball goes on past where it was; gold tag Early leave.
  *   More misses than points (odd data): the extra misses stack as a count on a tag that is already shown ("Late to school x2"); if no point is left for them (every day absent) the number just ticks on its card.
  * Between rounds a clean reset (the heading and the tags leave, both rackets glide home). Three counter cards at the top appear one per round and build as the points land: Days at school N of M,
- * Late to school N, Early leave N, each ending on the exact number in the data (absent misses in rounds 2 and 3 carry a tag but never add to the Late / Early numbers).
+ * Late to school N, Early leave N, each ending on the exact number in the data (absent days no longer miss in rounds 2 and 3).
  * Pictures: the empty table (tabletennis-layers/bg.jpg for a phone; wide/tabletennis-bg.jpg for a laptop / tablet: the SAME table with more room around it) and the two rackets
  * (racket-hero.webp, racket-opp.webp: rigid pieces). Everything else is code: the ball (a shaded white sphere, a real height arc, a soft contact shadow on the table that follows the ground track and grows nearer the
  * camera), the bounce ripples, a soft contact shadow under each racket, the net OVERLAY (a copy of the net band of the table picture drawn over the ball while the ball is beyond the net, so the ball is behind the net),
@@ -65,18 +67,14 @@ function makePlan(wk) {
   var absShots = Math.min(units[0], n);
   var plan = { D: D, n: n, f: FS[n] || 1, units: units, rounds: [], target: [Math.max(0, D - units[0]), units[1], units[2]] };
   for (var r = 0; r < NR; r++) {
-    // every point is played in every round. Misses are the LAST points: this round's own misses (late / early) just before the absent misses, which come last.
-    var own = r === 0 ? 0 : Math.min(units[r], n - absShots), m = absShots + own, firstMiss = n - m, shots = [], i, q;
+    // every point is played in every round. Misses are the LAST points, and each round misses only for its own event (absent / late / early; Igor, 1 Nov 2026).
+    var own = Math.min(units[r], n), m = own, firstMiss = n - m, shots = [], i, q;
     for (i = 0; i < n; i++) {
-      var tag = i < firstMiss ? null : (i >= n - absShots ? "absent" : ROUND_TAG[r]);
+      var tag = i < firstMiss ? null : ROUND_TAG[r];
       shots.push({ i: i, state: tag ? "miss" : "good", tag: tag, kind: tag || "good", u: 0, t0: 0, land: 0, tagAt: [], f: plan.f });
     }
-    for (q = 0; q < absShots; q++) shots[n - absShots + q].u = 1;
-    for (q = absShots; q < units[0] && absShots > 0; q++) shots[n - 1 - ((q - absShots) % absShots)].u++;          // extra absences stack on a point that is already absent
-    if (r > 0) {
-      for (q = 0; q < own; q++) shots[firstMiss + q].u = 1;
-      for (q = own; q < units[r] && own > 0; q++) shots[n - absShots - 1 - ((q - own) % own)].u++;                  // extra misses stack on a point that is already missed
-    }
+    for (q = 0; q < own; q++) shots[firstMiss + q].u = 1;
+    for (q = own; q < units[r] && own > 0; q++) shots[n - 1 - ((q - own) % own)].u++;                  // extra misses stack on a point that is already missed
     var ev = [];                                                      // counter events {t, dv}, round-local seconds
     shots.forEach(function (p) {
       p.t0 = t0For(p.i, n);                                           // the ball pops onto the grey racket
@@ -84,7 +82,7 @@ function makePlan(wk) {
       if (p.state === "good" && r === 0) ev.push({ t: p.land, dv: 1, p: p });
       for (var j = 0; j < p.u; j++) {
         p.tagAt.push(p.land + TM.TAG + j * TM.TAGSTEP);
-        if (r > 0 && p.tag === ROUND_TAG[r]) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p });          // absent tags never move the Late / Early numbers
+        if (r > 0) ev.push({ t: p.land + TM.TAG + j * TM.TAGSTEP, dv: 1, p: p }); 
       }
     });
     // the counter ends on the exact number in the data: whatever the points could not show goes on the last event (or a fallback one)
@@ -95,7 +93,7 @@ function makePlan(wk) {
       else ev.push({ t: TM.GO0 + 0.6, dv: want, p: null });
     }
     var last = 0; shots.forEach(function (p) { last = Math.max(last, p.land); });
-    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: n - absShots, miss: m, shots: shots, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 });
+    plan.rounds.push({ r: r, tag: ROUND_TAG[r], present: r === 0 ? n - absShots : (D - units[0] > 0 ? n : 0), miss: m, shots: shots, events: ev, endAt: Math.max(last, ev.length ? ev[ev.length - 1].t : 0) + 0.5, perfect: m === 0 && n > 0 && (r === 0 || D - units[0] > 0) });
   }
   return plan;
 }
@@ -327,7 +325,7 @@ MotionIgor.define({
           var e = el("div", "position:absolute;left:0;top:0;width:10px;height:10px;box-sizing:border-box;border-radius:50%;border:" + Math.max(2, Math.round(3 * k)) + "px solid rgba(255,255,255,0.8);visibility:hidden;will-change:transform", shLayer);
           RIPS.push({ el: e, t: r * RD + p.t0 + rp.t * p.f, x: g[0], y: g[1], D: C.ballD(rp.v) });
         });
-        if (P.fx) {
+        if (P.fx && !(P.fx.type === "spark" && PL.D - PL.units[0] <= 0)) {      // 1 Nov 2026: a child never at school (days open minus absent = 0) gets no star ring on the points that play as won
           var at = C.pt(P.fx.at[0], P.fx.at[1], P.fx.at[2]), box = el("div", "position:absolute;left:" + (at[0] - OFF) + "px;top:" + at[1] + "px;width:0;height:0;" + Z(Z_FX), world), parts = [];
           if (P.fx.type === "spark") {
             for (var q = 0; q < 8; q++) {
